@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>本棚</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --gap: 12px; --max: 860px; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; margin: 24px; }
+    header { max-width: var(--max); margin: 0 auto 16px; }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; }
+    .shelf { max-width: var(--max); margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--gap); }
+    .group { grid-column: 1 / -1; margin-top: 8px; }
+    .group h2 { font-size: 1.1rem; margin: 16px 0 8px; border-left: 4px solid #ddd; padding-left: 8px; }
+    .book { border: 1px solid #ddd; border-radius: 8px; padding: 14px; transition: background .15s, transform .06s; }
+    .book a { text-decoration: none; color: inherit; display: block; }
+    .book:hover { background: #f7f7f7; transform: translateY(-1px); }
+    .muted { color: #888; font-size: .9rem; }
+    #catalog { display: none; white-space: pre; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>本棚</h1>
+    <p class="muted">行ごとに <code>表示名@ページ.html</code> / <code>ページ.html</code>。<code>◆</code>で見出し、<code>sub/</code>で基準フォルダ切替、<code>./</code>でリセット。</p>
+  </header>
+
+  <!-- ここだけ編集してね ↓↓↓ -->
+  <pre id="catalog">
+◆ 一覧（indexと同階層）
+はじめに@intro.html
+rules.html
+notes.html
+
+scenarios/
+◆ サブシナリオ
+case01.html
+case02.html
+寄り道@extras/omake.html
+
+./
+◆ 付録
+credits.html
+
+# コメント：この行は無視されます
+  </pre>
+  <!-- ここだけ編集してね ↑↑↑ -->
+
+  <main id="out" class="shelf" aria-live="polite"></main>
+
+  <script>
+  (function () {
+    const text = document.getElementById('catalog').textContent.replace(/\r\n?/g, '\n');
+    const lines = text.split('\n');
+    const out = document.getElementById('out');
+
+    let currentGroup = null;
+    let base = ''; // 相対リンクの基準（'' = indexと同階層）
+
+    const escapeHtml = (s) => s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const addGroup = (title) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'group';
+      const h2 = document.createElement('h2');
+      h2.textContent = title.trim() || 'セクション';
+      wrap.appendChild(h2);
+      out.appendChild(wrap);
+      currentGroup = wrap;
+    };
+    const addBook = (label, href) => {
+      const card = document.createElement('div');
+      card.className = 'book';
+      const a = document.createElement('a');
+      a.href = href;
+      a.innerHTML = `<strong>${escapeHtml(label)}</strong><br><span class="muted">${escapeHtml(href)}</span>`;
+      card.appendChild(a);
+      (currentGroup || out).appendChild(card);
+    };
+
+    for (let raw of lines) {
+      if (!raw) continue;
+      // 前後の半角・全角空白を除去
+      const line = raw.replace(/^[\s\u3000]+|[\s\u3000]+$/g, '');
+      if (!line || line.startsWith('#')) continue;
+
+      // 見出し
+      if (line.startsWith('◆')) {
+        addGroup(line.replace(/^◆\s*/, ''));
+        continue;
+      }
+
+      // 基準フォルダ切替（末尾が / の行）
+      if (/[^\s]\/$/.test(line)) {
+        base = (line === './') ? '' : line; // './' はリセット
+        continue;
+      }
+
+      // 表示名@path or path
+      const at = line.indexOf('@');
+      if (at !== -1) {
+        const name = line.slice(0, at).replace(/[\s\u3000]+$/,'');
+        const path = line.slice(at + 1).replace(/^[\s\u3000]+/,'');
+        const href = (base ? base : '') + path;
+        addBook(name || path, href);
+      } else {
+        const path = line;
+        const href = (base ? base : '') + path;
+        const name = path.replace(/\?.*$/,'').replace(/#.*/,'').replace(/\.html?$/i,'');
+        addBook(name || path, href);
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
