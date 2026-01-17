@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Markdown風 プレビュー</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+    }
+    textarea {
+      width: 45%;
+      height: 90vh;
+      font-family: monospace;
+      font-size: 16px;
+      padding: 10px;
+      white-space: pre;
+    }
+    .preview {
+      width: 50%;
+      border: 1px solid #ccc;
+      padding: 20px;
+      overflow: auto;
+      height: 90vh;
+    }
+    .toggle-content {
+      display: none;
+      margin-left: 20px;
+    }
+    .toggle-button {
+      cursor: pointer;
+      color: #0077cc;
+    }
+    .indent {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <textarea id="input" placeholder="ここにマークダウン風のテキストを入力してください"></textarea>
+  <div id="output" class="preview"></div>
+
+  <script>
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+
+    input.addEventListener('input', () => {
+      const lines = input.value.split('\n');
+      const stack = [];
+      let html = '';
+
+      lines.forEach((line, index) => {
+        const rawSpaces = line.match(/^[\s　]*/)[0]; // 全角半角空白を数える
+        const spaceCount = rawSpaces.replace(/　/g, '  ').length;
+        const content = line.trim();
+
+        if (!content) return;
+
+        // トグルかどうか
+        const isToggle = content.startsWith('▼');
+        const actualContent = isToggle ? content.slice(1).trim() : content;
+
+        let tag = '';
+        if (spaceCount === 0) tag = 'h1';
+        else if (spaceCount === 1) tag = 'h2';
+        else if (spaceCount === 2) tag = 'h3';
+        else tag = 'div';
+
+        const indentLevel = spaceCount >= 3 ? spaceCount - 3 : 0;
+
+        // スタックで階層管理（本文のみ）
+        while (stack.length > indentLevel) {
+          html += '</div>';
+          stack.pop();
+        }
+        while (stack.length < indentLevel) {
+          html += '<div class="indent">';
+          stack.push('div');
+        }
+
+        if (tag.startsWith('h') && isToggle) {
+          const toggleId = `toggle-${index}`;
+          html += `<${tag}><span class="toggle-button" onclick="toggle('${toggleId}')">▼ ${actualContent}</span></${tag}><div id="${toggleId}" class="toggle-content">`;
+          stack.push('div'); // toggleの中も階層扱い
+        } else if (tag.startsWith('h')) {
+          html += `<${tag}>${actualContent}</${tag}>`;
+        } else {
+          html += `<div>${actualContent}</div>`;
+        }
+      });
+
+      // 未閉じのdivを閉じる
+      while (stack.length) {
+        html += '</div>';
+        stack.pop();
+      }
+
+      output.innerHTML = html;
+    });
+
+    function toggle(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+  </script>
+
+</body>
+</html>
