@@ -1,111 +1,111 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>Markdown風 プレビュー</title>
+  <meta charset="UTF-8" />
+  <title>ライブ構造プレビュー</title>
   <style>
     body {
       font-family: sans-serif;
       display: flex;
-      gap: 20px;
+      flex-direction: column;
       padding: 20px;
     }
     textarea {
-      width: 45%;
-      height: 90vh;
+      width: 100%;
+      height: 200px;
       font-family: monospace;
-      font-size: 16px;
-      padding: 10px;
-      white-space: pre;
+      margin-bottom: 20px;
     }
     .preview {
-      width: 50%;
       border: 1px solid #ccc;
-      padding: 20px;
-      overflow: auto;
-      height: 90vh;
+      padding: 10px;
+      white-space: normal;
     }
-    .toggle-content {
-      display: none;
-      margin-left: 20px;
-    }
-    .toggle-button {
+    .toggle-header {
       cursor: pointer;
-      color: #0077cc;
+      user-select: none;
+      font-weight: bold;
     }
-    .indent {
+    .nested {
       margin-left: 20px;
+    }
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
-
-  <textarea id="input" placeholder="ここにマークダウン風のテキストを入力してください"></textarea>
-  <div id="output" class="preview"></div>
+  <h2>リアルタイムプレビュー</h2>
+  <textarea id="input" placeholder="例：&#10;見出しH1&#10; ▼トグル見出しH2&#10;   本文"></textarea>
+  <div id="preview" class="preview"></div>
 
   <script>
-    const input = document.getElementById('input');
-    const output = document.getElementById('output');
+    const input = document.getElementById("input");
+    const preview = document.getElementById("preview");
 
-    input.addEventListener('input', () => {
-      const lines = input.value.split('\n');
-      const stack = [];
-      let html = '';
+    input.addEventListener("input", () => {
+      const lines = input.value.split("\n");
+      const root = document.createElement("div");
+      const stack = [{ indent: -1, element: root }];
 
-      lines.forEach((line, index) => {
-        const rawSpaces = line.match(/^[\s　]*/)[0]; // 全角半角空白を数える
-        const spaceCount = rawSpaces.replace(/　/g, '  ').length;
-        const content = line.trim();
+      lines.forEach(line => {
+        const indentMatch = line.match(/^([\s　]*)/); // 半角・全角空白対応
+        const indentStr = indentMatch ? indentMatch[0] : "";
+        const indent = indentStr.replace(/[　]/g, " ").length; // 全角を半角に変換してカウント
+        const text = line.trim();
 
-        if (!content) return;
+        if (!text) return;
 
-        // トグルかどうか
-        const isToggle = content.startsWith('▼');
-        const actualContent = isToggle ? content.slice(1).trim() : content;
+        let contentEl;
 
-        let tag = '';
-        if (spaceCount === 0) tag = 'h1';
-        else if (spaceCount === 1) tag = 'h2';
-        else if (spaceCount === 2) tag = 'h3';
-        else tag = 'div';
+        // Hタグ or 本文の判定
+        if (indent === 0) {
+          contentEl = document.createElement("h1");
+        } else if (indent === 1) {
+          contentEl = document.createElement("h2");
+        } else if (indent === 2) {
+          contentEl = document.createElement("h3");
+        } else {
+          contentEl = document.createElement("div");
+        }
 
-        const indentLevel = spaceCount >= 3 ? spaceCount - 3 : 0;
+        // ▼でトグル機能を追加
+        if (text.startsWith("▼")) {
+          const toggle = document.createElement("div");
+          toggle.className = "toggle-header";
+          toggle.textContent = text;
+          const childrenContainer = document.createElement("div");
+          childrenContainer.className = "nested hidden";
 
-        // スタックで階層管理（本文のみ）
-        while (stack.length > indentLevel) {
-          html += '</div>';
+          toggle.addEventListener("click", () => {
+            childrenContainer.classList.toggle("hidden");
+          });
+
+          contentEl = toggle;
+          contentEl._toggleContainer = childrenContainer;
+        } else {
+          contentEl.textContent = text;
+        }
+
+        // 適切な親を探して挿入（階層構造）
+        while (stack.length > 0 && indent <= stack[stack.length - 1].indent) {
           stack.pop();
         }
-        while (stack.length < indentLevel) {
-          html += '<div class="indent">';
-          stack.push('div');
-        }
 
-        if (tag.startsWith('h') && isToggle) {
-          const toggleId = `toggle-${index}`;
-          html += `<${tag}><span class="toggle-button" onclick="toggle('${toggleId}')">▼ ${actualContent}</span></${tag}><div id="${toggleId}" class="toggle-content">`;
-          stack.push('div'); // toggleの中も階層扱い
-        } else if (tag.startsWith('h')) {
-          html += `<${tag}>${actualContent}</${tag}>`;
+        const parent = stack[stack.length - 1].element;
+        if (contentEl._toggleContainer) {
+          parent.appendChild(contentEl);
+          parent.appendChild(contentEl._toggleContainer);
+          stack.push({ indent, element: contentEl._toggleContainer });
         } else {
-          html += `<div>${actualContent}</div>`;
+          parent.appendChild(contentEl);
+          stack.push({ indent, element: contentEl });
         }
       });
 
-      // 未閉じのdivを閉じる
-      while (stack.length) {
-        html += '</div>';
-        stack.pop();
-      }
-
-      output.innerHTML = html;
+      preview.innerHTML = "";
+      preview.appendChild(root);
     });
-
-    function toggle(id) {
-      const el = document.getElementById(id);
-      el.style.display = el.style.display === 'none' ? 'block' : 'none';
-    }
   </script>
-
 </body>
 </html>
