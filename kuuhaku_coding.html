@@ -9,55 +9,111 @@
    body {
     margin: 20px;
     }
-    .section{
+    .section {
     margin-bottom: 20px;
     }
-   textarea {
+    
+    .label {
+　　  color: royalblue;
+     font-weight: bold;
+     margin-bottom: 6px;
+    }
+    
+    .editor{
     width: 100%;
-    min-height: 100px;
+    min-height: 300px;
     padding: 10px;
     box-sizing: border-box;
-    resize: none;
-    overflow: hidden;
-    }  
+    /*border: 1px solid #ccc;*/  /*グレーの囲いを作って入力欄っぽく*/
+    outline: none;/*クリックした時の青い線を消す*/
+    white-space: pre-wrap;/*スペースや改行をそのまま表示する*/
+    resize: none; 
+    overflow: hidden;/*スクロールバーを出さない*/
+    font-size: 1rem;/*フォントをブラウザの基本サイズに合わせる*/
+    }
+    
+    h1, h2, h3, p {
+      margin: 0;
+      
   </style>
+  
    
 </head>
 
 <body>
   <div class="section">
-  <p>info</p>
-  <textarea name="infotext" oninput="autoResize(this)"></textarea >
+  <p class="label">info</p>
+  <div class="editor" contenteditable="true"></div>
   </div>
   
   <div class="section">
-  <p>main</p>
-  <textarea name="maintext" oninput="autoResize(this)"></textarea >
+  <p class="label">main</p>
+  <div class="editor" contenteditable="true"></div>
   </div>
   
   <div class="section">
-  <p>etc</p>
-  <textarea name="etctext" oninput="autoResize(this)"></textarea >
+  <p class="label">etc</p>
+  <div class="editor" contenteditable="true"></div>
   </div>
 
 </body>
 
+スクリプト見てほしいんだけど
 <script>
-    function autoResize(textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = textarea.scrollHeight + 'px';
-    }
+/*  */
+// 
     
-  document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll("textarea").forEach(autoResize);
-  });
+    /*複数のテキストエリアに同じイベントを反映*/
+    document.querySelectorAll(".editor").forEach(editor => {
+     editor.addEventListener("input", () => {
+      renderPreview(editor);
+     });
+    });
+    function renderPreview(editor) { // 入力が終わった時に呼び出される関数
+     const text = editor.innerText; //  プレーンテキストを取得
+     const lines = text.split('\n'); //  1行ずつの配列にする
+     let html = '';
+        
+     lines.forEach(line => { // 1行ずつ処理
+      const indent = (line.match(/^[ 　]*/) || [''])[0].length; // 行頭のスペースを取得し.lengthでカウント
+      const text = line;// 空白をそのまま使う
+      if (!text.trim()) {
+       html += `<br>`;
+       return;
+       }// 中身が空の場合は改行に
+      /* 変換処理 */
+      if (indent === 0) {
+        html += `<h1>${text}</h1>`;
+        } else if (indent === 1) {
+        html += `<h2>${text}</h2>`;
+        } else if (indent === 2) {
+        html += `<h3>${text}</h3>`;
+        } else {
+        const margin = (indent - 2) * 20;// 左にインデントをつける
+        html += `<p style="margin-left:${margin}px">${text}</p>`;
+      }
+     });
+
+        editor.innerHTML = html; // 変換した内容をeditorに上書き表示
+　　　    placeCaretAtEnd(editor); // カーソルを末尾に戻す
+　　　    }
+
+        /* カーソルを指定要素の最後に移動 */
+        function placeCaretAtEnd(el) {
+         el.focus();
+         const range = document.createRange();
+         const sel = window.getSelection();
+         range.selectNodeContents(el);
+         range.collapse(false);
+         sel.removeAllRanges();
+         sel.addRange(range);
+        }
+
 </script>
-</script>
 
-
-
-
-
-
+</body>
 
 </html>
+
+
+
