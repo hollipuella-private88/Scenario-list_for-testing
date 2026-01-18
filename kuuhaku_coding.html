@@ -1,146 +1,126 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Textarea + Preview Overlay Editor</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>インデント式プレビューエディタ</title>
 
-<style>
-body {
-  margin: 20px;
-  font-family: "Segoe UI", sans-serif;
-}
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
 
-.section {
-  margin-bottom: 30px;
-}
+    .section {
+      margin-bottom: 30px;
+    }
 
-.label {
-  color: royalblue;
-  font-weight: bold;
-  margin-bottom: 6px;
-}
+    .label {
+      color: royalblue;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
 
-/* 見た目共通スタイル */
-.editor-wrapper {
-  position: relative;
-  width: 100%;
-  min-height: 200px;
-}
+    textarea.editor {
+      width: 100%;
+      min-height: 200px;
+      padding: 10px;
+      box-sizing: border-box;
+      font-size: 1rem;
+      line-height: 1.8em;
+      font-family: inherit;
+      resize: vertical;
+    }
 
-/* textarea と preview を重ねる */
-textarea,
-.preview {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  font-size: 1rem;
-  line-height: 1.6;
-  font-family: inherit;
-  white-space: pre-wrap;
-  word-break: keep-all;
-}
+    .preview {
+      margin-top: 10px;
+      background: #f9f9f9;
+      padding: 10px;
+      min-height: 200px;
+      white-space: pre-wrap;
+      line-height: 1.8em;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 1px solid #ddd;
+    }
 
-/* 入力エリアを透明にして caret のみ表示 */
-textarea {
-  background: transparent;
-  color: transparent;
-  caret-color: black;
-  border: none;
-  resize: none;
-  outline: none;
-  z-index: 2;
-}
+    h1 {
+      font-size: 1.4rem;
+      margin: 0.5em 0 0.3em;
+    }
 
-/* プレビュー */
-.preview {
-  z-index: 1;
-  pointer-events: none;
-  color: #222;
-}
+    h2 {
+      font-size: 1.2rem;
+      margin: 0.4em 0 0.2em;
+    }
 
-/* 見出し風のスタイル調整 */
-.preview h1 {
-  font-size: 1.4rem;
-  margin: 0.4em 0;
-}
-.preview h2 {
-  font-size: 1.2rem;
-  margin: 0.3em 0;
-}
-.preview h3 {
-  font-size: 1.1rem;
-  margin: 0.25em 0;
-}
-.preview p {
-  margin: 0.2em 0;
-}
-</style>
+    h3 {
+      font-size: 1.1rem;
+      margin: 0.3em 0 0.2em;
+    }
+
+    p {
+      margin: 0.2em 0;
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="section">
-  <p class="label">info</p>
-  <div class="editor-wrapper">
-    <textarea class="editor" rows="6"></textarea>
+  <div class="section">
+    <p class="label">info</p>
+    <textarea class="editor" placeholder="ここに入力..."></textarea>
     <div class="preview"></div>
   </div>
-</div>
 
-<div class="section">
-  <p class="label">main</p>
-  <div class="editor-wrapper">
-    <textarea class="editor" rows="6"></textarea>
+  <div class="section">
+    <p class="label">main</p>
+    <textarea class="editor" placeholder="ここに入力..."></textarea>
     <div class="preview"></div>
   </div>
-</div>
 
-<div class="section">
-  <p class="label">etc</p>
-  <div class="editor-wrapper">
-    <textarea class="editor" rows="6"></textarea>
+  <div class="section">
+    <p class="label">etc</p>
+    <textarea class="editor" placeholder="ここに入力..."></textarea>
     <div class="preview"></div>
   </div>
-</div>
 
-<script>
-document.querySelectorAll(".section").forEach(section => {
-  const textarea = section.querySelector(".editor");
-  const preview = section.querySelector(".preview");
+  <script>
+    document.querySelectorAll(".section").forEach(section => {
+      const ta = section.querySelector(".editor");
+      const preview = section.querySelector(".preview");
 
-  textarea.addEventListener("input", () => {
-    const lines = textarea.value.split("\n");
-    let html = "";
+      ta.addEventListener("input", () => {
+        preview.innerHTML = convertTextToHtml(ta.value);
+      });
 
-    lines.forEach(line => {
-      const indent = (line.match(/^[ 　]*/) || [""])[0].length;
-      const content = line.trim();
-
-      if (content === "") {
-        html += "<br>";
-        return;
-      }
-
-      if (indent === 0) html += `<h1>${content}</h1>`;
-      else if (indent === 1) html += `<h2>${content}</h2>`;
-      else if (indent === 2) html += `<h3>${content}</h3>`;
-      else {
-        const margin = (indent - 2) * 20;
-        html += `<p style="margin-left:${margin}px">${content}</p>`;
-      }
+      // 初期描画
+      ta.dispatchEvent(new Event("input"));
     });
 
-    preview.innerHTML = html;
-  });
+    function convertTextToHtml(text) {
+      const lines = text.split("\n");
+      let html = "";
 
-  // 初期反映
-  textarea.dispatchEvent(new Event("input"));
-});
-</script>
+      lines.forEach(line => {
+        const indent = (line.match(/^[ 　]*/) || [""])[0].length;
+        const content = line.trim();
 
+        if (!content) {
+          html += "<br>";
+          return;
+        }
+
+        if (indent === 0) html += `<h1>${content}</h1>`;
+        else if (indent === 1) html += `<h2>${content}</h2>`;
+        else if (indent === 2) html += `<h3>${content}</h3>`;
+        else {
+          const margin = (indent - 2) * 20;
+          html += `<p style="margin-left:${margin}px">${content}</p>`;
+        }
+      });
+
+      return html;
+    }
+  </script>
 </body>
 </html>
