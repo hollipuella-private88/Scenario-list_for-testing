@@ -1,117 +1,34 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>階層メモビューア</title>
+  <meta charset="UTF-8">
+  <title>はじめてのHTML</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
+   div {
+    marign-bottom: 20px;
     }
-
-    #editor {
-      width: 100%;
-      min-height: 500px;
-      border: 1px solid #ccc;
-      padding: 1em;
-      font-size: 1rem;
-      white-space: pre-wrap;
-      outline: none;
-      background: white;
-    }
-
-    h1, h2, h3 {
-      margin: 0.5em 0 0.2em;
-    }
-
-    .line {
-      margin-left: 0;
-    }
-
-    .toggle-container {
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .toggle-content {
-      display: none;
-      margin-left: 1em;
-    }
-
-    .toggle-open > .toggle-content {
-      display: block;
-    }
+   textarea {
+    width: 100%;
+    height: 100%;
+    }  
   </style>
+   
 </head>
 <body>
-
-<div id="editor" contenteditable="true" spellcheck="false"></div>
-
-<script>
-  const editor = document.getElementById("editor");
-
-  editor.addEventListener("input", renderFormattedText);
-  window.addEventListener("DOMContentLoaded", renderFormattedText);
-
-  function renderFormattedText() {
-    const lines = editor.innerText.split('\n');
-    const stack = [];
-    editor.innerHTML = ''; // クリアして再描画
-
-    lines.forEach(rawLine => {
-      const line = rawLine.replace(/^(\s|　)*/, match => {
-        return match.replace(/　/g, ' ').length ? match.replace(/　/g, ' ') : '';
-      });
-
-      const indent = (rawLine.match(/^(\s|　)*/) || [''])[0].replace(/　/g, ' ').length;
-      let element;
-
-      if (line.startsWith('▼')) {
-        element = document.createElement('div');
-        element.className = 'toggle-container';
-        const summary = document.createElement('div');
-        summary.textContent = line;
-        summary.addEventListener('click', () => {
-          element.classList.toggle('toggle-open');
-        });
-
-        const content = document.createElement('div');
-        content.className = 'toggle-content';
-
-        element.appendChild(summary);
-        element.appendChild(content);
-        element._isToggle = true;
-      } else if (indent === 0) {
-        element = document.createElement('h1');
-        element.textContent = line;
-      } else if (indent === 1) {
-        element = document.createElement('h2');
-        element.textContent = line;
-      } else if (indent === 2) {
-        element = document.createElement('h3');
-        element.textContent = line;
-      } else {
-        element = document.createElement('div');
-        element.className = 'line';
-        element.textContent = line;
-      }
-
-      // 階層構造構築
-      while (stack.length > indent) stack.pop();
-
-      if (stack.length === 0) {
-        editor.appendChild(element);
-      } else {
-        const parent = stack[stack.length - 1];
-        const target = parent._isToggle ? parent.querySelector('.toggle-content') : parent;
-        target.appendChild(element);
-      }
-
-      stack[indent] = element;
-    });
-  }
-</script>
+  <div class="info">
+  <p>info</p>
+  <textarea name="infotext"></textarea >
+  </div>
+  
+  <div class="main">
+  <p>main</p>
+  <textarea name="maintext"></textarea >
+  </div>
+  
+  <div class="etc">
+  <p>etc</p>
+  <textarea name="etctext"></textarea >
+  </div>
 
 </body>
 </html>
