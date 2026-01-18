@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>エディタ＋プレビュー重ねる方式</title>
+  <title>リアルタイム変換エディタ</title>
   <style>
     body {
       font-family: sans-serif;
@@ -11,7 +11,6 @@
     }
 
     .section {
-      position: relative;
       margin-bottom: 30px;
     }
 
@@ -21,59 +20,35 @@
       margin-bottom: 6px;
     }
 
-    .editor-wrapper {
-      position: relative;
-      min-height: 300px;
-    }
-
-    .editor,
-    .preview {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .editor {
       width: 100%;
       min-height: 300px;
       padding: 10px;
       box-sizing: border-box;
+      outline: none;
       white-space: pre-wrap;
-      line-height: 1.8em;
       font-size: 1rem;
-      font-family: inherit;
-    }
-
-    .editor {
-      color: transparent;
-      background: transparent;
-      caret-color: black;
-      z-index: 2;
-      border: none;
-      resize: none;
-      overflow: hidden;
-    }
-
-    .preview {
-      z-index: 1;
-      pointer-events: none;
-      color: #000;
+      line-height: 1.8em;
+      border: 1px solid #ddd;
     }
 
     h1 {
       font-size: 1.4rem;
-      margin: 0;
+      margin: 0.3em 0;
     }
 
     h2 {
       font-size: 1.2rem;
-      margin: 0;
+      margin: 0.25em 0;
     }
 
     h3 {
       font-size: 1.1rem;
-      margin: 0;
+      margin: 0.2em 0;
     }
 
     p {
-      margin: 0;
+      margin: 0.15em 0;
     }
   </style>
 </head>
@@ -81,35 +56,23 @@
 
   <div class="section">
     <p class="label">info</p>
-    <div class="editor-wrapper">
-      <textarea class="editor"></textarea>
-      <div class="preview"></div>
-    </div>
+    <div class="editor" contenteditable="true"></div>
   </div>
 
   <div class="section">
     <p class="label">main</p>
-    <div class="editor-wrapper">
-      <textarea class="editor"></textarea>
-      <div class="preview"></div>
-    </div>
+    <div class="editor" contenteditable="true"></div>
   </div>
 
   <div class="section">
     <p class="label">etc</p>
-    <div class="editor-wrapper">
-      <textarea class="editor"></textarea>
-      <div class="preview"></div>
-    </div>
+    <div class="editor" contenteditable="true"></div>
   </div>
 
   <script>
-    document.querySelectorAll(".section").forEach(section => {
-      const ta = section.querySelector(".editor");
-      const preview = section.querySelector(".preview");
-
-      ta.addEventListener("input", () => {
-        const text = ta.value;
+    document.querySelectorAll(".editor").forEach(editor => {
+      editor.addEventListener("input", () => {
+        const text = editor.innerText;
         const lines = text.split("\n");
         let html = "";
 
@@ -131,11 +94,21 @@
           }
         });
 
-        preview.innerHTML = html;
-      });
+        // カーソル位置を保存
+        const sel = window.getSelection();
+        const range = sel.getRangeAt(0);
+        const offset = range.startOffset;
 
-      // 初期描画
-      ta.dispatchEvent(new Event("input"));
+        editor.innerHTML = html;
+
+        // カーソルを復元（末尾に戻すシンプル版）
+        editor.focus();
+        const newRange = document.createRange();
+        newRange.selectNodeContents(editor);
+        newRange.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      });
     });
   </script>
 </body>
