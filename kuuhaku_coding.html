@@ -25,7 +25,7 @@
     padding: 10px;
     box-sizing: border-box;
     /*border: 1px solid #ccc;*/  /*グレーの囲いを作って入力欄っぽく*/
-    /*outline: none;*/  /*クリックした時の青い線を消す*/
+    outline: none;  /*クリックした時の青い線を消す*/
     white-space: pre-wrap;/*スペースや改行をそのまま表示する*/
     resize: none; 
     overflow: hidden;/*スクロールバーを出さない*/
@@ -56,6 +56,7 @@
     
     h1, h2, h3, p {
       margin: 0;
+    }
       
   </style>
   
@@ -121,7 +122,7 @@
 　　　    }
 
         /* カーソルを指定要素の最後に移動 */
-        /*function placeCaretAtEnd(el) {
+        function placeCaretAtEnd(el) {
          el.focus();
          const range = document.createRange();
          const sel = window.getSelection();
@@ -129,7 +130,7 @@
          range.collapse(false);
          sel.removeAllRanges();
          sel.addRange(range);
-        } */
+        } 
 
 </script>
 
