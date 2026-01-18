@@ -1,183 +1,142 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>タブ切り替えエディタ</title>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>エディタ＋プレビュー重ねる方式</title>
   <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    overflow: hidden; /* ページ全体のスクロールを防ぐ */
-    font-family: sans-serif;
-  }
-  
-  .top-tabs, .bottom-tabs {
-    display: flex;
-    background: #f3f3f3;
-    position: fixed;
-    left: 0;
-    right: 0;
-    height: 48px;
-    z-index: 10;
-  }
-  .top-tabs {
-    top: 0;
-  }
-  
-  .bottom-tabs {
-    bottom: 0;
-  }
-  .top-tabs button,
-  .bottom-tabs button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    background: #e0e0e0;
-    font-size: 1rem;
-  }
-  
-  .top-tabs button.active,
-  .bottom-tabs button.active {
-    background: white;
-    border-bottom: 3px solid #007bff;
-    font-weight: bold;
-  }
-  .main-area {
-    position: absolute;
-    top: 48px;
-    bottom: 48px;
-    left: 0;
-    right: 0;
-    padding: 10px;
-    overflow-y: auto;
-    background: #fff;
-  }
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
 
-textarea {
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  font-size: 1rem;
-  resize: none;
-}
+    .section {
+      position: relative;
+      margin-bottom: 30px;
+    }
 
-.preview {
-  white-space: pre-wrap;
-}
+    .label {
+      color: royalblue;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
 
-h1 { font-size: 1.4rem; margin: .3em 0; }
-h2 { font-size: 1.2rem; margin: .25em 0; }
-h3 { font-size: 1.1rem; margin: .2em 0; }
-p  { margin: .15em 0; }
+    .editor-wrapper {
+      position: relative;
+      min-height: 300px;
+    }
+
+    .editor,
+    .preview {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      min-height: 300px;
+      padding: 10px;
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      line-height: 1.8em;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .editor {
+      color: transparent;
+      background: transparent;
+      caret-color: black;
+      z-index: 2;
+      border: none;
+      resize: none;
+      overflow: hidden;
+    }
+
+    .preview {
+      z-index: 1;
+      pointer-events: none;
+      color: #000;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      margin: 0;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    p {
+      margin: 0;
+    }
   </style>
 </head>
 <body>
 
-  <!-- 上部タブ -->
-  <div class="top-tabs">
-    <button data-mode="edit" class="active">入力</button>
-    <button data-mode="preview">プレビュー</button>
+  <div class="section">
+    <p class="label">info</p>
+    <div class="editor-wrapper">
+      <textarea class="editor"></textarea>
+      <div class="preview"></div>
+    </div>
   </div>
 
-  <!-- メイン表示エリア -->
-  <div class="main-area" id="main-area"></div>
-
-  <!-- 下部タブ -->
-  <div class="bottom-tabs">
-    <button data-section="info" class="active">info</button>
-    <button data-section="main">main</button>
-    <button data-section="etc">etc</button>
+  <div class="section">
+    <p class="label">main</p>
+    <div class="editor-wrapper">
+      <textarea class="editor"></textarea>
+      <div class="preview"></div>
+    </div>
   </div>
 
-<script>
-  // 保存用のデータ
-  const state = {
-    activeSection: "info",
-    mode: "edit",
-    text: {
-      info: "",
-      main: "",
-      etc: ""
-    }
-  };
+  <div class="section">
+    <p class="label">etc</p>
+    <div class="editor-wrapper">
+      <textarea class="editor"></textarea>
+      <div class="preview"></div>
+    </div>
+  </div>
 
-  const mainArea = document.getElementById("main-area");
+  <script>
+    document.querySelectorAll(".section").forEach(section => {
+      const ta = section.querySelector(".editor");
+      const preview = section.querySelector(".preview");
 
-  // 全タブ要素
-  const topButtons = document.querySelectorAll(".top-tabs button");
-  const bottomButtons = document.querySelectorAll(".bottom-tabs button");
-
-  // --- 描画更新関数 ---
-  function render() {
-    const sec = state.activeSection;
-    const mode = state.mode;
-
-    mainArea.innerHTML = ""; // クリア
-
-    if (mode === "edit") {
-      // 編集版 textarea
-      const ta = document.createElement("textarea");
-      ta.value = state.text[sec];
       ta.addEventListener("input", () => {
-        state.text[sec] = ta.value;
-      });
-      mainArea.appendChild(ta);
-    } else {
-      // プレビュー
-      const div = document.createElement("div");
-      div.className = "preview";
+        const text = ta.value;
+        const lines = text.split("\n");
+        let html = "";
 
-      const lines = state.text[sec].split("\n");
-      let html = "";
+        lines.forEach(line => {
+          const indent = (line.match(/^[ 　]*/) || [""])[0].length;
+          const content = line.trim();
 
-      lines.forEach(line => {
-        const indent = (line.match(/^[ 　]*/) || [""])[0].length;
-        const content = line.trim();
-        if (content === "") {
-          html += "<br>";
-          return;
-        }
-        if (indent === 0) html += `<h1>${content}</h1>`;
-        else if (indent === 1) html += `<h2>${content}</h2>`;
-        else if (indent === 2) html += `<h3>${content}</h3>`;
-        else {
-          const margin = (indent - 2) * 20;
-          html += `<p style="margin-left:${margin}px">${content}</p>`;
-        }
+          if (content === "") {
+            html += "<br>";
+            return;
+          }
+
+          if (indent === 0) html += `<h1>${content}</h1>`;
+          else if (indent === 1) html += `<h2>${content}</h2>`;
+          else if (indent === 2) html += `<h3>${content}</h3>`;
+          else {
+            const margin = (indent - 2) * 20;
+            html += `<p style="margin-left:${margin}px">${content}</p>`;
+          }
+        });
+
+        preview.innerHTML = html;
       });
 
-      div.innerHTML = html;
-      mainArea.appendChild(div);
-    }
-  }
-
-  // --- イベント設定：上部タブ ---
-  topButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      topButtons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.mode = btn.dataset.mode;
-      render();
+      // 初期描画
+      ta.dispatchEvent(new Event("input"));
     });
-  });
-
-  // --- イベント設定：下部タブ ---
-  bottomButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      bottomButtons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.activeSection = btn.dataset.section;
-      render();
-    });
-  });
-
-  // 初期描画
-  render();
-</script>
-
+  </script>
 </body>
 </html>
