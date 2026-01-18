@@ -28,8 +28,8 @@
       outline: none;
       white-space: pre-wrap;
       font-size: 1rem;
-      line-height: 1.8em;
       border: 1px solid #ddd;
+      line-height: normal; /* ← ココを normal に */
     }
 
     h1 {
@@ -94,22 +94,21 @@
           }
         });
 
-        // カーソル位置を保存
-        const sel = window.getSelection();
-        const range = sel.getRangeAt(0);
-        const offset = range.startOffset;
-
+        // 再描画（カーソル位置は末尾に）
         editor.innerHTML = html;
-
-        // カーソルを復元（末尾に戻すシンプル版）
         editor.focus();
-        const newRange = document.createRange();
-        newRange.selectNodeContents(editor);
-        newRange.collapse(false);
+        const sel = window.getSelection();
+        const rng = document.createRange();
+        rng.selectNodeContents(editor);
+        rng.collapse(false);
         sel.removeAllRanges();
-        sel.addRange(newRange);
+        sel.addRange(rng);
       });
+
+      // 初回描画
+      editor.dispatchEvent(new Event("input"));
     });
   </script>
+
 </body>
 </html>
