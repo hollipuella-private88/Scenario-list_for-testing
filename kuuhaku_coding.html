@@ -1,111 +1,165 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>はじめてのHTML</title>
-  
+  <title>タブ切り替えエディタ</title>
+
   <style>
-   body {
-    font-family: sans-serif;
-    margin: 20px;
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-   }
-    .section {
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
       display: flex;
-    margin-bottom: 20px;
-    width: 100%;
+      flex-direction: column;
     }
-    
-    textarea {
-      width: 100%;
-      min-height: 200px;
-      padding: 10px;
-      box-sizing: border-box;
-      resize:  vertical;
+    .top-tabs, .bottom-tabs {
+      display: flex;
+      background: #f3f3f3;
+    }
+    .top-tabs button, .bottom-tabs button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: #e0e0e0;
       font-size: 1rem;
     }
-    
-    .preview {
-      border: 1px solid #ccc;/*グレーの囲いを作って目立たせる*/
-      padding: 10px;
-      min-height: 200px;
-      width: 100%;
-      white-space: pre-wrap;/*スペースや改行をそのまま表示する*/
-      background: #fafafa;/*背景に色*/
+    .top-tabs button.active,
+    .bottom-tabs button.active {
+      background: white;
+      border-bottom: 3px solid #007bff;
+      font-weight: bold;
     }
-    
-    h1 { font-size: 1.4rem; margin: 0.3em 0; }
-    h2 { font-size: 1.2rem; margin: 0.25em 0; }
-    h3 { font-size: 1.1rem; margin: 0.2em 0; }
-    p  { margin: 0.15em 0; }
-      
-  </style>
-  
-   
-</head>
 
+    .main-area {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #fff;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      font-size: 1rem;
+      resize: none;
+    }
+
+    .preview {
+      white-space: pre-wrap;
+    }
+    h1 { font-size: 1.4rem; margin: .3em 0; }
+    h2 { font-size: 1.2rem; margin: .25em 0; }
+    h3 { font-size: 1.1rem; margin: .2em 0; }
+    p  { margin: .15em 0; }
+  </style>
+</head>
 <body>
-  <div class="section">
-  <p class="label">info</p>
-  <textarea class="editor" placeholder="テキスト"></textarea>
-  <div class="preview"></div>
+
+  <!-- 上部タブ -->
+  <div class="top-tabs">
+    <button data-mode="edit" class="active">入力</button>
+    <button data-mode="preview">プレビュー</button>
   </div>
-  
-  <div class="section">
-  <p class="label">main</p>
-  <textarea class="editor" placeholder="テキスト"></textarea>
-  <div class="preview"></div>
-  </div>
-  
-  <div class="section">
-  <p class="label">etc</p>
-  <textarea class="editor" placeholder="テキスト"></textarea>
-  <div class="preview"></div>
+
+  <!-- メイン表示エリア -->
+  <div class="main-area" id="main-area"></div>
+
+  <!-- 下部タブ -->
+  <div class="bottom-tabs">
+    <button data-section="info" class="active">info</button>
+    <button data-section="main">main</button>
+    <button data-section="etc">etc</button>
   </div>
 
 <script>
-/*  */
-// 
+  // 保存用のデータ
+  const state = {
+    activeSection: "info",
+    mode: "edit",
+    text: {
+      info: "",
+      main: "",
+      etc: ""
+    }
+  };
 
-    document.querySelectorAll(".section").forEach(section => {
-      const ta = section.querySelector("textarea");
-      const preview = section.querySelector(".preview");
+  const mainArea = document.getElementById("main-area");
 
+  // 全タブ要素
+  const topButtons = document.querySelectorAll(".top-tabs button");
+  const bottomButtons = document.querySelectorAll(".bottom-tabs button");
+
+  // --- 描画更新関数 ---
+  function render() {
+    const sec = state.activeSection;
+    const mode = state.mode;
+
+    mainArea.innerHTML = ""; // クリア
+
+    if (mode === "edit") {
+      // 編集版 textarea
+      const ta = document.createElement("textarea");
+      ta.value = state.text[sec];
       ta.addEventListener("input", () => {
-        const text = ta.value;
-        const lines = text.split("\n");
-        let html = "";
+        state.text[sec] = ta.value;
+      });
+      mainArea.appendChild(ta);
+    } else {
+      // プレビュー
+      const div = document.createElement("div");
+      div.className = "preview";
 
-        lines.forEach(line => {
-          const indent = (line.match(/^[ 　]*/) || [""])[0].length;
-          const content = line.trim();
-          if (content === "") {
-            html += "<br>";
-            return;
-          }
-          if (indent === 0) html += `<h1>${content}</h1>`;
-          else if (indent === 1) html += `<h2>${content}</h2>`;
-          else if (indent === 2) html += `<h3>${content}</h3>`;
-          else {
-            const margin = (indent - 2) * 20;
-            html += `<p style="margin-left:${margin}px">${content}</p>`;
-          }
-        });
+      const lines = state.text[sec].split("\n");
+      let html = "";
 
-        preview.innerHTML = html;
+      lines.forEach(line => {
+        const indent = (line.match(/^[ 　]*/) || [""])[0].length;
+        const content = line.trim();
+        if (content === "") {
+          html += "<br>";
+          return;
+        }
+        if (indent === 0) html += `<h1>${content}</h1>`;
+        else if (indent === 1) html += `<h2>${content}</h2>`;
+        else if (indent === 2) html += `<h3>${content}</h3>`;
+        else {
+          const margin = (indent - 2) * 20;
+          html += `<p style="margin-left:${margin}px">${content}</p>`;
+        }
       });
 
-      // 初期描画
-      ta.dispatchEvent(new Event("input"));
+      div.innerHTML = html;
+      mainArea.appendChild(div);
+    }
+  }
+
+  // --- イベント設定：上部タブ ---
+  topButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      topButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.mode = btn.dataset.mode;
+      render();
     });
+  });
 
+  // --- イベント設定：下部タブ ---
+  bottomButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      bottomButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.activeSection = btn.dataset.section;
+      render();
+    });
+  });
 
+  // 初期描画
+  render();
 </script>
 
 </body>
-
 </html>
