@@ -47,6 +47,11 @@
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
     }
+    
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("textarea").forEach(autoResize);
+  });
+</script>
 </script>
 
 
