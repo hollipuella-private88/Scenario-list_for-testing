@@ -1,124 +1,117 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>リアルタイム階層プレビュー</title>
+  <meta charset="UTF-8" />
+  <title>階層メモビューア</title>
   <style>
     body {
       font-family: sans-serif;
       padding: 20px;
+      background: #f9f9f9;
     }
+
     #editor {
+      width: 100%;
+      min-height: 500px;
       border: 1px solid #ccc;
-      padding: 10px;
-      min-height: 400px;
+      padding: 1em;
+      font-size: 1rem;
       white-space: pre-wrap;
       outline: none;
+      background: white;
     }
+
     h1, h2, h3 {
-      margin: 10px 0 5px;
+      margin: 0.5em 0 0.2em;
     }
-    .toggle-header {
+
+    .line {
+      margin-left: 0;
+    }
+
+    .toggle-container {
       cursor: pointer;
       user-select: none;
     }
+
     .toggle-content {
-      margin-left: 20px;
       display: none;
+      margin-left: 1em;
     }
-    .toggle-open .toggle-content {
+
+    .toggle-open > .toggle-content {
       display: block;
     }
   </style>
 </head>
 <body>
-  <h2>リアルタイム階層エディター</h2>
-  <div id="editor" contenteditable="true"></div>
 
-  <script>
-    const editor = document.getElementById("editor");
+<div id="editor" contenteditable="true" spellcheck="false"></div>
 
-    function parseContent(text) {
-      const lines = text.split("\n");
-      const root = document.createElement("div");
-      const stack = [{ level: -1, container: root }];
+<script>
+  const editor = document.getElementById("editor");
 
-      lines.forEach(line => {
-        const trimmed = line.replace(/^[　\s]*/, ''); // 全角・半角スペース削除
-        const spaceCount = line.length - trimmed.length;
+  editor.addEventListener("input", renderFormattedText);
+  window.addEventListener("DOMContentLoaded", renderFormattedText);
 
-        if (!trimmed) return;
+  function renderFormattedText() {
+    const lines = editor.innerText.split('\n');
+    const stack = [];
+    editor.innerHTML = ''; // クリアして再描画
 
-        const isToggle = trimmed.startsWith("▼");
-        const content = isToggle ? trimmed.slice(1).trim() : trimmed;
-
-        let element;
-        if (spaceCount === 0) {
-          element = document.createElement("h1");
-          element.textContent = content;
-        } else if (spaceCount === 1) {
-          element = document.createElement("h2");
-          element.textContent = content;
-        } else if (spaceCount === 2) {
-          element = document.createElement("h3");
-          element.textContent = content;
-        } else {
-          element = document.createElement("div");
-          element.textContent = content;
-        }
-
-        let parentLevel = spaceCount;
-        while (stack.length && stack[stack.length - 1].level >= parentLevel) {
-          stack.pop();
-        }
-
-        const parent = stack[stack.length - 1].container;
-
-        if (isToggle) {
-          const toggleWrapper = document.createElement("div");
-          toggleWrapper.className = "toggle-section";
-
-          const header = document.createElement("div");
-          header.className = "toggle-header";
-          header.textContent = "▼ " + content;
-          header.onclick = () => {
-            toggleWrapper.classList.toggle("toggle-open");
-          };
-
-          const contentDiv = document.createElement("div");
-          contentDiv.className = "toggle-content";
-
-          toggleWrapper.appendChild(header);
-          toggleWrapper.appendChild(contentDiv);
-          parent.appendChild(toggleWrapper);
-          stack.push({ level: spaceCount, container: contentDiv });
-        } else {
-          parent.appendChild(element);
-          if (spaceCount >= 3) {
-            stack.push({ level: spaceCount, container: element });
-          }
-        }
+    lines.forEach(rawLine => {
+      const line = rawLine.replace(/^(\s|　)*/, match => {
+        return match.replace(/　/g, ' ').length ? match.replace(/　/g, ' ') : '';
       });
 
-      return root.innerHTML;
-    }
+      const indent = (rawLine.match(/^(\s|　)*/) || [''])[0].replace(/　/g, ' ').length;
+      let element;
 
-    function updatePreview() {
-      const rawText = editor.innerText;
-      const parsedHTML = parseContent(rawText);
-      editor.innerHTML = parsedHTML;
-      placeCaretAtEnd(editor);
-    }
+      if (line.startsWith('▼')) {
+        element = document.createElement('div');
+        element.className = 'toggle-container';
+        const summary = document.createElement('div');
+        summary.textContent = line;
+        summary.addEventListener('click', () => {
+          element.classList.toggle('toggle-open');
+        });
 
-    function placeCaretAtEnd(el) {
-      el.focus();
-      document.execCommand('selectAll', false, null);
-      document.getSelection().collapseToEnd();
-    }
+        const content = document.createElement('div');
+        content.className = 'toggle-content';
 
-    editor.addEventListener("input", () => {
-      updatePreview();
+        element.appendChild(summary);
+        element.appendChild(content);
+        element._isToggle = true;
+      } else if (indent === 0) {
+        element = document.createElement('h1');
+        element.textContent = line;
+      } else if (indent === 1) {
+        element = document.createElement('h2');
+        element.textContent = line;
+      } else if (indent === 2) {
+        element = document.createElement('h3');
+        element.textContent = line;
+      } else {
+        element = document.createElement('div');
+        element.className = 'line';
+        element.textContent = line;
+      }
+
+      // 階層構造構築
+      while (stack.length > indent) stack.pop();
+
+      if (stack.length === 0) {
+        editor.appendChild(element);
+      } else {
+        const parent = stack[stack.length - 1];
+        const target = parent._isToggle ? parent.querySelector('.toggle-content') : parent;
+        target.appendChild(element);
+      }
+
+      stack[indent] = element;
     });
-  </script>
+  }
+</script>
+
 </body>
 </html>
