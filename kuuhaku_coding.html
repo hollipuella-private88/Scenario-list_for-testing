@@ -7,56 +7,39 @@
   
   <style>
    body {
+    font-family: sans-serif;
     margin: 20px;
-    }
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+   }
     .section {
     margin-bottom: 20px;
-    }
-    
-    .label {
-　　  color: royalblue;
-     font-weight: bold;
-     margin-bottom: 6px;
-    }
-    
-    .editor{
     width: 100%;
-    min-height: 300px;
-    padding: 10px;
-    box-sizing: border-box;
-    /*border: 1px solid #ccc;*/  /*グレーの囲いを作って入力欄っぽく*/
-    outline: none;  /*クリックした時の青い線を消す*/
-    white-space: pre-wrap;/*スペースや改行をそのまま表示する*/
-    resize: none; 
-    overflow: hidden;/*スクロールバーを出さない*/
-    font-size: 1rem;/*フォントをブラウザの基本サイズに合わせる*/
     }
     
-    h1 {
-      font-size: 1.3rem;
-      font-weight: bold;
-      margin: 0.5em 0;
-    }
-    h2 {
-      font-size: 1.2rem;
-      font-weight: bold;
-      margin: 0.4em 0;
-    }
-    h3 {
-      font-size: 1.1rem;
-      font-weight: bold;
-      margin: 0.3em 0;
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 10px;
+      box-sizing: border-box;
+      resize:  vertical;
+      font-size: 1rem;
     }
     
-    .editor h1,
-    .editor h2,
-    .editor h3 {
-      word-break: keep-all;
+    .preview {
+      border: 1px solid #ccc;/*グレーの囲いを作って目立たせる*/
+      padding: 10px;
+      min-height: 200px;
+      width: 100%;
+      white-space: pre-wrap;/*スペースや改行をそのまま表示する*/
+      background: #fafafa;/*背景に色*/
     }
     
-    h1, h2, h3, p {
-      margin: 0;
-    }
+    h1 { font-size: 1.4rem; margin: 0.3em 0; }
+    h2 { font-size: 1.2rem; margin: 0.25em 0; }
+    h3 { font-size: 1.1rem; margin: 0.2em 0; }
+    p  { margin: 0.15em 0; }
       
   </style>
   
@@ -66,74 +49,61 @@
 <body>
   <div class="section">
   <p class="label">info</p>
-  <div class="editor" contenteditable="true"></div>
+  <textarea class="editor" placeholder="テキスト"></textarea>
+  <div class="preview"></div>
   </div>
   
   <div class="section">
   <p class="label">main</p>
-  <div class="editor" contenteditable="true"></div>
+  <textarea class="editor" placeholder="テキスト"></textarea>
+  <div class="preview"></div>
   </div>
   
   <div class="section">
   <p class="label">etc</p>
-  <div class="editor" contenteditable="true"></div>
+  <textarea class="editor" placeholder="テキスト"></textarea>
+  <div class="preview"></div>
   </div>
 
 <script>
 /*  */
 // 
-    
-    /*複数のテキストエリアに同じイベントを反映*/
-    document.querySelectorAll(".editor").forEach(editor => {
-     editor.addEventListener("input", () => {
-      renderPreview(editor);
-     });
+
+    document.querySelectorAll(".section").forEach(section => {
+      const ta = section.querySelector("textarea");
+      const preview = section.querySelector(".preview");
+
+      ta.addEventListener("input", () => {
+        const text = ta.value;
+        const lines = text.split("\n");
+        let html = "";
+
+        lines.forEach(line => {
+          const indent = (line.match(/^[ 　]*/) || [""])[0].length;
+          const content = line.trim();
+          if (content === "") {
+            html += "<br>";
+            return;
+          }
+          if (indent === 0) html += `<h1>${content}</h1>`;
+          else if (indent === 1) html += `<h2>${content}</h2>`;
+          else if (indent === 2) html += `<h3>${content}</h3>`;
+          else {
+            const margin = (indent - 2) * 20;
+            html += `<p style="margin-left:${margin}px">${content}</p>`;
+          }
+        });
+
+        preview.innerHTML = html;
+      });
+
+      // 初期描画
+      ta.dispatchEvent(new Event("input"));
     });
-    function renderPreview(editor) { // 入力が終わった時に呼び出される関数
-     const text = editor.innerText; //  プレーンテキストを取得
-     const lines = text.split('\n'); //  1行ずつの配列にする
-     let html = '';
-        
-     lines.forEach(line => { // 1行ずつ処理
-      const indent = (line.match(/^[ 　]*/) || [''])[0].length; // 行頭のスペースを取得し.lengthでカウント
-      const text = line;// 空白をそのまま使う
-      if (!text.trim()) {
-       html += `<br>`;
-       return;
-       }// 中身が空の場合は改行に
-      /* 変換処理 */
-      if (indent === 0) {
-        html += `<h1>${text}</h1>`;
-        } else if (indent === 1) {
-        html += `<h2>${text}</h2>`;
-        } else if (indent === 2) {
-        html += `<h3>${text}</h3>`;
-        } else {
-        const margin = (indent - 2) * 20;// 左にインデントをつける
-        html += `<p style="margin-left:${margin}px">${text}</p>`;
-      }
-     });
 
-        editor.innerHTML = html; // 変換した内容をeditorに上書き表示
-　　　    placeCaretAtEnd(editor); // カーソルを末尾に戻す
-　　　    }
-
-        /* カーソルを指定要素の最後に移動 */
-        function placeCaretAtEnd(el) {
-         el.focus();
-         const range = document.createRange();
-         const sel = window.getSelection();
-         range.selectNodeContents(el);
-         range.collapse(false);
-         sel.removeAllRanges();
-         sel.addRange(range);
-        } 
 
 </script>
 
 </body>
 
 </html>
-
-
-
