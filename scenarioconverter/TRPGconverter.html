@@ -182,8 +182,15 @@ async function buildHTML(parsed){
       if(it.type==="h"){
         const h=doc.createElement(it.level===1?"h1":it.level===2?"h2":"h3");
         h.dataset.id=it.id; if(it.tags.length) h.dataset.tags=it.tags.join(" "); h.appendChild(doc.createTextNode(it.text)); sec.appendChild(h);
-      }else if(it.type==="p"){
-        const p=doc.createElement("p"); p.appendChild(formatParagraph(it.text,page,parsed.dict)); sec.appendChild(p);
+      } else if(it.type==="p"){
+  const p = doc.createElement("p");
+  const lines = it.text.split(/\n/); // 改行で分割
+  lines.forEach((line, i) => {
+    if (i > 0) p.appendChild(doc.createElement("br")); // 2行目以降に <br>
+    p.appendChild(formatParagraph(line, page, parsed.dict));
+  });
+  sec.appendChild(p);
+}
       }else if(it.type==="node" && it.node?.kind==="code"){
         const pre=doc.createElement("pre"); pre.className="code";
         const btn=doc.createElement("button"); btn.className="copy"; btn.textContent="copy";
