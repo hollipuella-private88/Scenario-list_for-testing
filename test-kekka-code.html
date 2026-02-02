@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>「ねぇ、ここにいるよ」</title>
+<meta name="trpg-key" content="NeleKoko_test-20260203">
+<style>
+:root{
+  --bg:#fff; --text:#333; --line:#e5e5e5; --accent:#e7f1ff; --accent2:#b9d6ff;
+  --header:56px; --tabs:52px; --drawerW:min(92vw,420px); --r:12px; --sh:0 6px 20px rgba(0,0,0,.08);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.85 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif}
+
+/* header */
+header{position:sticky;inset-block-start:0;z-index:60;height:var(--header);display:grid;grid-template-columns:auto 1fr auto;place-items:center;padding:8px;border-block-end:1px solid var(--line);background:#fff}
+.title{text-align:center;font-weight:700}
+.icon{min-inline-size:44px;min-block-size:40px;border:1px solid var(--line);border-radius:10px;background:#fff;display:inline-grid;place-items:center;cursor:pointer;padding:0 .9em}
+.icon:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+
+/* main and tabs */
+main{block-size:calc(100dvh - var(--header) - var(--tabs));overflow:auto;scroll-behavior:smooth;padding:16px min(6vw,28px) 120px}
+nav.tabs{position:sticky;inset-block-end:0;block-size:var(--tabs);display:grid;grid-template-columns:repeat(3,1fr);border-block-start:1px solid var(--line);background:#fff;z-index:50}
+.tab{appearance:none;border:0;background:#fff;cursor:pointer;padding:.6em 0}
+.tab[aria-current="page"]{background:var(--accent);font-weight:700}
+.page{display:none}
+.page[aria-hidden="false"]{display:block}
+
+/* drawers */
+.drawer{position:fixed;inset-block-start:var(--header);inset-block-end:0;inline-size:var(--drawerW);background:#fff;border:1px solid var(--line);box-shadow:var(--sh);overflow:auto;transition:.25s;z-index:900}
+.drawer.left{inset-inline-start:0;transform:translateX(-110%)}
+.drawer.right{inset-inline-end:0;transform:translateX(110%)}
+.drawer.open{transform:translateX(0)}
+
+/* TOC/Tool drawer content */
+.toc{display:grid;grid-template-columns:120px 1fr;gap:8px;padding:8px}
+.toc .pages{border-inline-end:1px solid var(--line);padding-inline-end:8px;display:flex;flex-direction:column;gap:6px}
+.toc .pages button{inline-size:100%;margin:0;border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px;cursor:pointer;text-align:center}
+.toc .pages button[aria-current="page"]{background:var(--accent);border-color:var(--accent2);font-weight:700}
+.toc .area{padding-inline:4px}
+
+/* TOC-like rows (used for both TOC and Tool) */
+.toc .row{display:grid;grid-template-columns:24px 1fr;gap:6px;border-block-end:1px dashed #eee;padding:8px 4px}
+.toc .tw{cursor:pointer;color:#666}.toc .tw.off{opacity:.25;pointer-events:none}
+.lvl2{padding-inline-start:16px}.lvl3{padding-inline-start:32px}
+
+/* search */
+.searchbar{display:flex;gap:8px;padding:8px}
+.searchbar input{flex:1;border:1px solid var(--line);border-radius:999px;padding:.6em .9em}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 8px 8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:.2em .6em;background:#fff;cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent2);font-weight:700}
+
+/* card */
+.card{border:1px solid var(--line);border-radius:10px;padding:8px;margin:8px;background:#fff}
+.card .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#666}
+.card .title{font-weight:700;margin:.2em 0}
+.card .fulltext{
+  display:-webkit-box;
+  -webkit-line-clamp:1;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.card.open .fulltext{display:block;-webkit-line-clamp:unset;overflow:visible}
+.card .fulltext .note{background:#e7f1ff;border-radius:3px;padding:.05em .15em}
+
+/* headings & code */
+h1,h2,h3{scroll-margin-top:calc(var(--header) + 10px)}
+h1{text-align:center;font-size:1.6rem;font-weight:800;border-block-end:1px solid var(--line);padding-block-end:.4em;margin:1.2em 0 .8em}
+h2{font-size:1.25rem;font-weight:700;margin:1.3em 0 .2em}
+h3{font-size:1.05rem;font-weight:700;margin:1.1em 0 .2em;padding-inline-start:8px;border-inline-start:3px solid var(--accent2)}
+
+/* code wrap */
+pre.code{position:relative;background:#f5f6f7;border:1px solid var(--line);border-radius:10px;padding:14px 12px 12px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+pre.code code{white-space:inherit}
+pre.code .copy{position:absolute;inset:8px 8px auto auto;border:1px solid var(--line);border-radius:999px;background:#fff;padding:.2em .6em;cursor:pointer;font:12px/1 var(--mono)}
+pre.code .copy.done{background:#e1f6e7;border-color:#b9ebc9}
+
+/* memo */
+.note{background:#e7f1ff;border-radius:3px;padding:.05em .15em}
+.fab{position:fixed;z-index:950;display:none;min-inline-size:40px;min-block-size:40px;border:1px solid var(--line);border-radius:999px;background:#fff;box-shadow:var(--sh);place-items:center;cursor:pointer}
+.fab.show{display:grid}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:995}
+.pop{position:fixed;z-index:1000;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--sh);padding:10px;min-inline-size:min(92vw,320px);max-inline-size:min(96vw,420px);max-block-size:80dvh;overflow:auto}
+.pop h4{margin:.2em 0 .6em}
+.pop textarea{inline-size:100%;min-block-size:110px;border:1px solid var(--line);border-radius:8px;padding:8px;font:13px/1.6 var(--mono)}
+.actions{display:flex;gap:10px;justify-content:space-between;margin-top:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);border-radius:8px;background:#fff;padding:.5em .9em;white-space:nowrap;min-inline-size:86px}
+.btn.primary{background:#0d6efd;border-color:#0d6efd;color:#fff}
+.btn.danger{color:#b00}
+mark.hl{background:#fff3a0}
+
+/* tool */
+.tool-word{border-bottom:1px solid var(--line);padding-bottom:4px}
+.input-box{width:100%;border:1px solid var(--line);border-radius:8px;padding:.5em .7em;margin:6px 0 12px;background:#fff}
+
+/* preview spacing fix */
+.card .fulltext > :first-child{ margin-block-start:0 !important; }
+.card .fulltext > :last-child { margin-block-end:0 !important; }
+.card .fulltext > p,
+.card .fulltext > ul,
+.card .fulltext > ol,
+.card .fulltext > pre,
+.card .fulltext > blockquote { margin-block:.35em .4em; }
+
+@media(max-width:768px){.toc{grid-template-columns:98px 1fr}}
+</style>
+<style>
+/* 任意：OSダークモードのときの配色（1行で変数切替） */
+@media (prefers-color-scheme: dark){:root{--bg:#101214;--text:#e8eaed;--line:#30363d;--accent:#0b253f;--accent2:#21486e}}
+</style>
+</head>
+<body>
+<header>
+  <button id="btnToc" class="icon" aria-label="目次">≡</button>
+  <div class="title">「ねぇ、ここにいるよ」</div>
+  <button id="btnSearch" class="icon" aria-label="検索">◀</button>
+</header>
+
+<main id="sc">
+  <section class="page" data-page="info" aria-hidden="false"><h1 data-id="h-1wha60p">PL向け情報</h1><p></p><p>なんでそんなに心配してるの？</p><p></p><p>クトゥルフ神話TRPG</p><h1 data-id="h-koiid7">「ねぇ、ここにいるよ」</h1><p></p><h2 data-id="h-1tmrt6h">▍導入</h2><p>KPCが姿を消した。</p><p>旅行に行くと告げた、その言葉を最後に。</p><p></p><p>連絡を取ろうとすれば、呼び出し音だけが虚しく響く。</p><p></p><p>足取りを追ううちに、ひとつの地名が浮かび上がった。</p><p></p><p>地図には載っていない。載っているはずがない。</p><p>それどころか、人の記憶からも、静かに消えたはずの場所だ。</p><p></p><p>それでも、確かにKPCはその名を残している。</p><p>メモの走り書き。消しかけの検索履歴。</p><p>偶然とは思えない痕跡が、静かに同じ一点を指していた。</p><p></p><p>まるで、沈んだ街のほうから呼ばれたみたいに。</p><p></p><h2 data-id="h-1sz7f62">▍シナリオ傾向</h2><p>ホラー、因習村、しんどい</p><p></p><h2 data-id="h-g9qh4y">▍基本情報</h2><p>タイトル：「ねぇ、ここにいるよ」</p><p>※括弧を含めてタイトルです。</p><p>略称：ねぇここ</p><p>使用：基本ルールブック6版</p><p>参照：マレウス・マンストロルム、ラヴクラフトの幻夢境、新マレウス・マンストロルム1、2、グランド・グリモア</p><p>舞台：現代日本</p><p>人数：1人～KPが捌けるまで</p><p>ロスト率：低</p><p>発狂率：中</p><p>後遺症：可能性あり</p><p>戦闘：望むのであれば有り</p><p>プレイ時間：ボイセ3～5時間程度</p><p>※上記はRPを考慮していない。RPによっては時間が倍に延びる。</p><p>PL難易度：★★☆☆☆</p><p>KP難易度：★★★★☆</p><p>推奨技能：〈回避〉もしくはある程度の〈DEX〉</p><p>準推奨技能：〈目星〉〈図書館〉</p><p></p><h2 data-id="h-lewqnx">▍確認事項</h2><p>・ルートによっては推奨技能を使用しません。</p><p>・準推奨技能は持っているとシナリオをより楽しめます。</p><p>・参照サプリメントに関しては所持していなくても問題ありません。特にKPは持っていると解釈の幅が広がります。</p><p>・PL人数が増えるほど、KP難易度も上昇します。</p><p>・シナリオ開始時点の正気度が低い場合はロスト率が増加します。推奨正気度は30以上です。</p><p>・推奨PCはKPCが失踪した時に捜索できる者です。KPCのことを大切に思っている探索者であるほどシナリオを楽しめる傾向にあります。</p><p>・テストプレイ時にKPC作りが面倒だったのでNPCデータもあります。</p><p></p><p>・シナリオ投稿企画『沈んだ街を捜しています。』参加シナリオです。</p><p></p><p></p><p></p><h2 data-id="h-1tmuy4d">▍注意</h2><p>このシナリオはフィクションです。</p><p>実在する組織、地名、事件とは一切関係ありません。</p><p>含まれる内容は、犯罪行為を助長したり推奨したりする意図はありません。</p><p>特定の宗教や信仰を擁護または批判する意図を含みません。</p><p>神話生物に対する独自解釈を含みます。</p><p>概要以外の内容はネタバレとなります。ネタバレを含む文章、イラストをSNSなどに投稿する際はふせったー、privatter、ポイピクなどの外部ツールを利用してください。第三者が誰でも閲覧可能な状態での公開はお控えください。</p><p></p><h2 data-id="h-iy1ws8">▍権利表記</h2><p>本作は、「株式会社アークライト」及び「株式会社KADOKAWA」が権利を有する『クトゥルフ神話TRPG』シリーズの二次創作物です。 Call of Cthulhu is copyright ©1981, 2015, 2019 by Chaosium Inc. ;all rights reserved. Arranged by Arclight Inc. Call of Cthulhu is a registered trademark of Chaosium Inc. PUBLISHED BY KADOKAWA CORPORATION　「クトゥルフ神話TRPG」「新クトゥルフ神話TRPG」</p><p></p></section>
+  <section class="page" data-page="main" aria-hidden="true"><p></p><p>◇：大項目</p><p>◎：中項目</p><p>◯：小項目</p><p>▶：ダイスロールや探索可能箇所を表す記号です。この表記がなければ強制のダイスロールです。</p><p>▼：探索内容を示す記号です。</p><p>→：項目の移動を示しています。</p><p>※：KP情報です。</p><p></p><p>☆：ザ・ブラックとの接触判定を示す記号です。この判定に失敗した場合は幻覚を見るようになります。幻覚時の失敗は0/1の正気度減少です。</p><p></p><p>‘テキスト’：通常時の情報です。幻覚時は描写しません。</p><p>〔テキスト〕：幻覚時の情報です。通常時は描写しません。KPCによって内容を改変してください。</p><p>◇導入</p><p>◎前日談</p><p>探索者はKPCと会話をしている。</p><p>その際にKPCは「水の街に旅行に行く」という話をする。</p><p>※この時点では、幽ヶ淵の名前は出さないこと。</p><p>新規の関係性など、相手の持ち物が分からないようであれば、一緒にショッピングに行き、目の前で新しく何かを買うのも良いだろう。もしかするとPCがKPCにプレゼントしてくれるかもしれないし。</p><p></p><p></p><p>◎失踪</p><p>その日を最後に、KPCの姿を見ることはなくなった。</p><p>探索者が連絡を取ろうとしても繋がらない。</p><p>正気度判定1/1D3</p><p>※実際は、「KPCの連絡先の認識」が変わっているためである。PCの画面上では別の番号やアカウントがKPCのものに見えたり、KPCからの電話が非通知に見えたりする。</p><p></p><p>▶周囲の人に話を聞く</p><p>▶警察に話をする（もしくは、参考人として警察が訪ねてくる）</p><p></p><p>▼周囲の人に話を聞く</p><p>周囲の人間に話を聞けば、会話をしているうちにおかしなことが起こる。</p><p>KPCの人物情報に対して人によって齟齬が発生し、会話が一部成り立たない。</p><p>例：名前、年齢、性別、誕生日、容姿の特徴など</p><p>矛盾点が出た際にPLが気づいていない場合〈アイデア〉を振らせてよい。</p><p></p><p>▼警察に話をする</p><p></p><p></p><p>▼警察から訪ねてくる</p><p>公的捜査が不可（後回しになる）</p><p></p><p>自分たちで捜索するしかないかもしれない。</p><p>◎KPCの部屋</p><p>関係性に合わせて職場の机やその他の場所に改変してください。探索箇所もご自由に変更どうぞ。</p><p>▶棚、机、パソコン</p><p></p><p>▼棚</p><p>小難しい本が並んでいる。</p><p>普段本を読んでいないKPCであれば少し不自然に思うかもしれない。</p><p>▶〈目星〉</p><p>黒いシミがついている。</p><p></p><p>イブ＝ツトゥルに近づいてしまうほどの知識欲を持ってしまったという証拠です。</p><p></p><p>▼机</p><p>KPCのメモがある</p><p>KPCのメモに「幽ヶ淵」という地名と、そこへの道順が記された地図が書かれている。</p><p>▶︎〈図書館〉</p><p>とある湖の付近であることがわかる</p><p></p><p></p><p>▼パソコン</p><p>検索履歴を見ると、幽ヶ淵という単語について調べていたのがわかる。</p><p>▶〈目星〉</p><p>航空写真などを見れば、KPCがメモに残していた地図と違うことがわかる。KPCの地図をみれば実際は湖がある場所の一部に街があるように記されている。</p><p></p><p>▼湖の情報（調べたいという宣言がある場合）</p><p>▶〈図書館〉</p><p>・日本で最も水深が深い湖で、その深さのため真冬でも凍らないとされるが、実際は謎に包まれている。</p><p>・流入河川は小規模な沢のみだが、その水量が保たれているのは湖底の湧き水によるものと考えられている。</p><p>・カルデラ湖説が有力だが実際は不明である。</p><p>・1940年に水質が変化したことによって多くの魚類が姿を消した。</p><p>・酸性化の被害が出たため1970年ごろから中和処理が進んだものの、いまだに水質は回復していない。</p><p></p><p>現実にある秋田県田沢湖の情報です。実際の地名を出すと距離の遠いPCは足が遠のく可能性がありますので、モデルの湖名はPLには開示しなくても構いません。</p><p>リアリティを求めるのであれば初めから湖名を伝えても問題ありません。</p><p></p><p></p><p>▼幽ヶ淵についてKPCのパソコン以外で調べる</p><p>▶〈目星〉</p><p>調べても地図にない場所である。どこにも情報がない。</p><p>もし他の者に聞いても誰も知らないだろう。</p><p></p><p></p><p>幽ヶ淵に行こうと思えばKPCの地図を頼りに向かうことができる。</p><p></p><p>◎幽ヶ淵付近</p><p>何の変哲もない田舎である。KPCの地図を頼りに歩みを進めていくことだろう。</p><p>道中、石碑があり、確認すれば「幽ヶ淵」と書かれていた。</p><p></p><p>石碑の先には石畳の道が続いている。</p><p></p><p>▶〈アイデア〉〈目星〉</p><p>石碑の場所に、航空写真などで確認した時にはあった鳥居がなくなっていることに気づく。</p><p></p><p>村人に会いたい場合〈幸運〉などで遭遇できてよいが、PC以外の人間には通常通りの鳥居が見えている。</p><p>同じように石碑（鳥居）の先を進んでもいつの間にかはぐれてしまう。</p><p></p><p>◎入り口</p><p>石碑から5分ほど歩いただろうか。本来なら、この先には湖があるはずだった。</p><p>しかし、石畳の道は下り階段で途切れている。</p><p></p><p>何段か低くなった地面の先。そこに広がる街は酷く薄暗い。</p><p></p><p>階段を降りていけば、上から見た時と相変わらず古びた街並みが広がっている。人気はなく、廃村のようだ。</p><p>不気味なことに、空があるはずの場所はほとんど覆いつくされている。</p><p>民家の屋根同士は不自然なほど繋がり、大通りの上でさえ、ツギハギに塞がれていた。</p><p></p><p>ふと横を見れば、街の入口付近にランタンを見つける。油も残っており、しばらく使えそうだ。</p><p></p><p>▶〈目星〉</p><p>ランタンに黒い煤汚れがある。</p><p>※ザ・ブラックです。</p><p></p><p>ランタンを手に取る場合</p><p>☆〈幸運〉失敗時 秘匿情報</p><p>ランタンを持つ手が煤に触れてしまった。……ぬた、と煤にしては水分を含んだ感触がする。</p><p>途端、心臓が一拍だけ遅れて鳴り、遅れた分だけ血が熱くなった。</p><p>唇が乾き、呼吸が浅くなる。</p><p>世界があなたを置いて先に進んでいく。あなたは、その場に縫い付けられたように一瞬動けなかった。</p><p></p><p>正気度判定1d3+5/1d3+6</p><p></p><p>これによる発狂はありません。</p><p></p><p>真実の一瞥が発動しています。一度触れれば、以降は0/1の正気度判定のみで構いません。描写も適宜簡易化してください。</p><p></p><p></p><p>ランタンを使用した、もしくは明かりで照らした後に▶〈目星〉</p><p>よく見れば、石畳も黒く汚れている。</p><p></p><p>※靴を履いている想定のため、意識して触れない限りザ・ブラックとの接触判定は行わなくてよい。</p><p></p><p>◇KP向け探索箇所一覧</p><p>探索1で行ける場所</p><p>▶︎中央通り、民家1、役所、脇道、水門、井戸</p><p></p><p>2箇所探索後〈目星〉</p><p>入り口に夜鬼の爪</p><p></p><p>4箇所探索後◎電話</p><p>▶図書館（イベント）</p><p></p><p>探索2（図書館イベント後、追加探索箇所）</p><p>▶図書館、民家2</p><p></p><p>天候を変える使用後</p><p>▶︎水門（イベント）</p><p></p><p>エンディング分岐</p><p>▶︎呪文を使用せずに帰る</p><p>▶︎呪文を使用し洪水を起こさずに帰る</p><p>▶︎呪文を使用し洪水を起こして帰る</p><p>▶︎洪水が起きた後も街に残る</p><p>▶︎イブ=ツトゥルの祝福を受け正気度が0になる</p><p>▶︎正気度が0になる</p><p>◇探索１</p><p></p><p>▶︎中央通り/脇道</p><p>※中央通りを進むと民家と役所がある。</p><p>脇道を進むと水門や井戸がある。</p><p></p><p></p><p>◎中央通り</p><p>通りは水路に向かって傾斜がついていた。水路は通りに沿って長く伸びており、水捌けが良さそうだ。</p><p>水路や地面は乾いている。</p><p></p><p>▶〈目星〉</p><p>壁が煤で汚れているとわかる。</p><p></p><p>▶通りの民家を調べる。</p><p>▶モルタル壁の建物（役所）を調べる。</p><p></p><p>役所</p><p></p><p>▶建物全体/書類棚/職員の机</p><p></p><p>▼建物全体を見る</p><p>古びたポスターが貼っており「雨天時注意。大雨の際は対策をすること」と書いてある。</p><p></p><p>▶︎〈目星〉</p><p>ポスターの隅に黒いシミがある。</p><p>〔KPCの文字で「水門」と書かれている〕</p><p>‘他の探索者に言われるのであれば、かろうじて水門と読めなくもないだろう。しかし、KPCの筆跡ではない。’</p><p></p><p>☆〈幸運〉失敗時 秘匿情報</p><p>あなたは、ポスターが気になり触ろうとする。そこはインクでにじんでいた。指で触れれば、その黒が、肌にまとわりついてくる。</p><p></p><p>途端、心臓が一拍だけ遅れて鳴り、遅れた分だけ血が熱くなった。</p><p>唇が乾き、呼吸が浅くなる。</p><p>世界があなたを置いて先に進んでいく。あなたは、その場に縫い付けられたように一瞬動けなかった。</p><p></p><p>正気度判定1d3+5/1d3+6</p><p></p><p>これによる発狂はありません。</p><p></p><p>気がつくと、ポスターの隅にKPCの文字で小さく「水門」って書いていることが分かる。</p><p>指には何もついていない。幻覚を見ていたのだろうか。</p><p></p><p>※ポスターの目星情報。すでに黒いシミを見つけていた場合、それが読めるようになっている。</p><p></p><p></p><p>▼書類棚</p><p>▶︎〈目星〉</p><p>世帯名簿を見るとチグハグに感じる。ある世帯は苗字が家族間で一致せず、ある世帯は住所の記載が街の外、そもそも都道府県すら違い、ある世帯は住居が街の中にあるのに、連絡先が外部の場所になっていたりする。当然の事ながら、全く普通の世帯も存在する。</p><p>1970年ごろを境に記録は少なくなっているようだ。</p><p></p><p></p><p>▼職員の机</p><p>〈目星〉</p><p>勤めていた人の記録が見つかる。</p><p>複数人で帳簿を管理することが難しいという内容が書かれている。見比べれば、同じ時期、同じ世帯の内容でも人によって書いている情報が変わっていることだろう。</p><p></p><p></p><p></p><p></p><p>▼目星</p><p></p><p>入口に'黒い動物の爪'〔KPCの持ち物〕のようなものが落ちている</p><p></p><p>◎住居</p><p>何度か改築した後のある古い家だ。</p><p>▶部屋全体、棚、机</p><p></p><p>▼部屋全体</p><p>▶〈目星〉</p><p>キッチンや風呂場がない。</p><p></p><p></p><p>▼棚</p><p>黒い汚れの目立つ本棚だ。</p><p>▶〈図書館〉</p><p>知恵の神について</p><p>『彼の神は望んだ者に知識を与えてくださると共に、神の使いを我らに遣わしてくれるのだ。』</p><p></p><p>▼机</p><p>机の下に紙が落ちている</p><p></p><p>誰かの記録</p><p>『毎日会っている娘に名前を間違えられた』</p><p></p><p>KPCのメモ</p><p>『久しぶりに会ったせいか名前間違えられたんですけど。俺ってそんなに印象薄いっすかねー？』</p><p></p><p>▶〈目星〉</p><p>机の端が黒く汚れているのに気づく。</p><p></p><p>改めて見渡してみれば家中に汚れが散っており、通りよりも家の中の方が汚れが多く感じる。</p><p></p><p></p><p></p><p>〈幸運〉失敗 秘匿情報</p><p>ふと、机に手を置いた時。べちゃべちゃとした嫌な感触が肌に伝わった。黒い汚れが指に触れ、やけに背中が冷たくなる。</p><p>奇妙な質感に息が跳ね、世界が一瞬止まって見えた。酷く、喉が熱い。あなたは、その不思議な感覚に困惑を覚えることだろう。</p><p></p><p>正気度判定1d3+5/1d3+6</p><p></p><p>これによる発狂はありません。</p><p></p><p></p><p>◎水門</p><p>街を見るとひとつ水門がある。</p><p>水門は重い鉄板が降りていて、水路を塞いでいる。水門は太い鎖が上へ伸びており、横にある小屋に繋がっている。隣の小屋を見れば、重りがレール上に吊られているのが分かるだろう。</p><p></p><p></p><p>〈目星〉</p><p>水路は乾いているようだ。</p><p>ここには黒いシミが少ない気がする。</p><p></p><p></p><p>◎小屋</p><p>▶部屋全体/歯車/棚</p><p></p><p>▼掲示物</p><p>注意書きがある。</p><p>『豪雨時ノ開門ハ洪水ノ恐レアリ。速ニ閉門セヨ。』</p><p></p><p>▼歯車</p><p>（本棚を見る前）歯車が無数にならんでおり、今見ても分からない。</p><p>〈重機械操作〉x3もしくは構造資料を読んでいる</p><p>水門を動かすための歯車であるとわかる。</p><p></p><p>〈目星〉</p><p>ここには黒い汚れが少ない。</p><p></p><p></p><p></p><p></p><p>【目星】＞53＞成功</p><p></p><p></p><p>【幸運】＞16＞成功</p><p></p><p></p><p>【幸運】＞34＞成功</p><p></p><p></p><p></p><p></p><p></p><p>:棚</p><p></p><p>【図書館】＞22＞成功</p><p></p><p>バランスウエイト式の水門で、基本は街から外へ水が流れる構造になっている。街側から水が流れると水圧で自動開門し、大雨時は外側の水圧で逆流防止のため自動閉門するようだ。</p><p></p><p></p><p></p><p>【アイデア】＞51＞成功</p><p></p><p>操作手順が図書館とかにないか？</p><p></p><p></p><p></p><p>電話</p><p></p><p>非通知</p><p></p><p>図書館に向かう間</p><p>【目星】＞47＞成功</p><p></p><p>図書館にいくほど黒い汚れが多く感じる</p><p></p><p></p><p>図書館</p><p></p><p>【目星】＞27＞成功</p><p>マフを見つけられる</p><p></p><p>【幸運】＞87＞失敗</p><p></p><p>図書館でKPCを探しているうちに、思いがけず黒い汚れに触れてしまった。</p><p>心臓が一拍だけ遅れて鳴り、遅れた分だけ血が熱くなる。</p><p>舌の裏が苦い。唇が乾く。呼吸が浅くなる。</p><p>世界があなたを置いて先に進んでいく。あなたは、その場に縫い付けられたみたいに動けない。</p><p></p><p>正気度判定1d3+5/1d3+6</p><p></p><p>これによる発狂はありません</p><p></p><p></p><p>遠くから見た時は、椿が倒れているのかと思ったことだろう。</p><p>黒く濡れた床に寝そべった彼は</p><p></p><p>【目星】＞42＞成功</p><p>水門の操作手順</p><p>水門は手動でも動作可能。歯車付きの巻き上げ機がある。レバーで動くが、知識がないと歯車が噛み合わず開閉できない仕組みになっているだろう。→資料を読むことで水門への重機械操作の成功率50%上昇（最大90%）</p><p></p><p></p><p></p><p>村の成り立ちの書かれた紙をみつける。</p><p>廃村だった場所を魔術師たちが隠れ里にしたという内容が書かれている。神のため、屋根を広げて空から守ったのだ。</p><p></p><p></p><p>【図書館】14＞成功</p><p></p><p></p><p>【イブ=ツトゥル】</p><p>研究者によって議論が分かれる神。すべての物事を見守っているといわれる。知識の図書館とでも言うべき存在である。その体から作られる黒いミルクを飲めば様々な知識が得られる他に、蝙蝠のような怪物を従えるともいわれている。</p><p></p><p></p><p>【アイデア】49＞成功</p><p></p><p>黒い汚れはイブかも</p><p>この前見た爪は蝙蝠のかも</p><p></p><p></p><p>住居</p><p>全体</p><p>〈目星〉</p><p>水場がない。火元などはある</p><p></p><p>棚</p><p>『神の遣いは、黒き蝙蝠に似た姿をとる。</p><p>背に翼をもち、爪は硬く、闇に溶ける。</p><p></p><p>初めて見た者は怯えるが、恐れる必要はない。</p><p></p><p>彼らは命じられたことをよく守り、よく働く。</p><p>神が我らに遣わしてくださった、有難き存在である。』</p><p></p><p></p><p>【図書館】</p><p></p><p>『彼らは黒きものを好む。</p><p>それを与えれば、より忠実に働く。</p><p></p><p>だが与えすぎれば、彼らは溺れる。</p><p>そして溺れたものは、もう戻らない。』</p><p></p><p></p><p>【目星】＞38＞成功</p><p></p><p>【正気度ロール】＞29＞成功</p><p></p><p>0/1</p><p></p><p>机</p><p>誰かの日記</p><p>『今日、屋根のツギハギが甘いところから水が落ちてしまった。</p><p>床に当たったしずくの周りで、黒きものが小さくちぎれて散った。</p><p>やっぱりあれは水に弱い、特に流れて触れると脆い。</p><p></p><p>次の大雨の前に、天候を変える術を確かめておこう。</p><p>魔力を蓄えた石を木箱に入れて、置いておこう。</p><p>きっと皆が使えるわかりやすいところがいい。</p><p></p><p>降りそうになったら晴れへ戻す、それが守りになる。』</p><p></p><p>椿の日記</p><p>『今日、大雨だったからか上から水が落ちてきたんすけど。屋根のツギハギが甘かったんですかね。</p><p>床に当たったしずくの周りで、黒い水が小さくちぎれて散ってしまいました。</p><p>俺の中の知識が薄くなった気がしますね。嫌っすね。</p><p></p><p>やっぱりあれは水に弱いんですかね。流れている水に触れたらすぐバラバラになるんじゃないっすか？</p><p></p><p>次の大雨の前に、天候を変える術を確かめておきますか。</p><p>魔力を蓄えた石を木箱に入れて、置いておくとかですかね。</p><p></p><p>きっと皆が使えるわかりやすいところがいいっすよね。</p><p>雨が降りそうになったら晴れへ戻す、それが一番安全そうっすね。』</p><p></p><p></p><p>《天候を変える》p273</p><p>天候を自由に操作する呪文。</p><p>大勢で使用することで大きな効果を得ることもできる。</p><p>10MPで1レベルの気象状況を変えることができる。</p><p>降雨量のレベル</p><p>1乾燥、2霧雨あるいはもや、3雨（雪）、4あられ（雪）、5大雨（大雪）、6激しい雷雨（猛吹雪）</p><p></p><p>〈目星〉</p><p>誰かの日記2</p><p>『昨晩は、よく眠れなかった。</p><p>思考がまとまらなかったので、黒き水を飲み、問いをひとつ捧げた。</p><p>すると胸の奥があたたかくなって、答えがきた。</p><p></p><p>黒き水を飲んだ私はひとりで考えているんじゃなかった。</p><p></p><p>最初から、私の考えは私だけのものじゃなかった。</p><p>そう思うと、ほっとする。</p><p></p><p>ここでは、知るほどに孤独が減る。</p><p>知れば知るほど、神に近くなる。</p><p>神に近づくほど、頭の中が広くなる。</p><p></p><p>いつか、神と完全に同じところに立てる日が来る。</p><p></p><p>一緒になれる。</p><p>それが嬉しい。</p><p>とても、幸福なことだ。』</p><p></p><p>椿の日記2</p><p>『昨日はよく眠れなかったっすね。</p><p></p><p>頭がうるさかったんで、黒い水を飲んで、神様に聞いてみました。</p><p>そしたらすぐ答えがきたんですよね。黒い水を飲んだ後は、ひとりじゃなかったっすね。優しい神様っすね。</p><p></p><p>最初から、俺の考えは俺だけのものじゃなかったってことっすよね。</p><p>そう思うと安心しますね。</p><p></p><p>ここでは、知識を得るほどに寂しく無くなるみたいっす。</p><p>知れば知るほど、神に近づくんですかね。</p><p></p><p>神に近づくほど、頭の中が広くなる気がします。</p><p>いつか、神様と完全に同じところに立てる日が来るだろうなー。</p><p></p><p>神と一緒になれるんですね。</p><p>それは嬉しいっすね。</p><p>とても、幸福なことっす。』</p><p></p><p></p><p></p><p></p><p></p><p></p><p>【目星】＞61＞成功</p><p></p><p></p><p></p><p>【目星】＞61＞成功</p><p></p><p></p><p>【アイデア】＞1＞決定的成功/スペシャル</p><p></p><p></p><p></p><p></p><p>【目星】＞94＞失敗</p><p></p><p></p><p></p><p></p><p></p><p>:</p><p></p><p>【目星】＞13＞スペシャル</p><p></p><p></p><p></p><p>【正気度ロール】＞70＞失敗</p><p></p><p></p><p></p><p></p><p></p><p>【正気度ロール】(1D100&amp;lt;=37)＞74＞失敗</p><p></p><p></p><p></p><p></p><p>-20【目星】(1D100&amp;lt;=50)＞34＞成功</p><p></p><p></p><p></p><p>【正気度ロール】(1D100&amp;lt;=44)＞13＞成功</p><p></p><p></p><p></p><p>ラウンド</p><p>【回避】＞24＞成功</p><p></p><p>【DEX×5】(1D100&amp;lt;=75)＞70＞成功</p><p>避けられる</p><p></p><p>【目星〉</p><p></p><p></p><p>〈回避〉</p><p>〈DEX×5〉</p><p></p><p></p><p></p><p></p><p>呪文SAN-1</p><p>〈アイデア〉</p><p></p><p></p><p>敵が水門の操作レバーを塞いでいるため、洪水を起こすには敵との対抗に勝利しなければならない。</p><p>DEXもしくはSTR対抗に成功した後、重機械操作x2に成功すれば水門を開くことができる（敵のDEXは14、STRは11）。水門の解除方法について構造資料を読んでいる場合、成功率に50%のプラス補正がもらえる（重機械操作10の場合20＋50＝70%で振ることができる）。</p><p></p><p>しかし、大雨が降っているため、洪水に飲み込まれる前に脱出する必要がある。6ラウンド以内に脱出宣言をすれば生還可能。</p><p></p><p>水門が開いた状態で7ラウンド目以降も街にいた場合は洪水に巻き込まれてロストとなる。水門が開いていなければ洪水は起きないため、ラウンド関係なく街から脱出することが可能である。一度水門を開けた後、再度閉じるためには逆回転させる必要があるが、洪水の圧力もあるため難しい。</p><p></p><p>夜鬼はステータスがPCの高い値になる</p><p></p><p></p><p>相手が阻もうとする中、あなたはレバー動かしていく。歯車からギィ……と錆びた金属音がした。次の瞬間、ワイヤーが張り、レバーが自ら倒れ始める。水門が開いたのだろう、そちらの方向から震えが伝わってきた。小屋の外から見ている場合、水門が上がった水路の中心に大きな水の流れができている地面が鳴るような轟音が響く。黒い液体は流水に触れると、固形のように固まり、パラパラと散っていく。流れはやがて街中に広がり、水門から街全体に水が押し寄せてくる。すぐに逃げなければ、巻き込まれてしまうだろう。</p><p></p><p>夜鬼が幻覚でKPCに見えた</p><p></p><p>電話</p><p></p><p></p></section>
+  <section class="page" data-page="etc" aria-hidden="true"><p></p><p>生還報酬2D10+10</p></section>
+</main>
+
+<nav class="tabs" role="tablist" aria-label="ページ切替">
+  <button class="tab" data-target="info" aria-current="page">info</button>
+  <button class="tab" data-target="main">main</button>
+  <button class="tab" data-target="etc">etc</button>
+</nav>
+
+<!-- left drawer: TOC + tool -->
+<aside id="toc" class="drawer left" aria-label="目次/ツール">
+  <div class="toc">
+    <div class="pages" id="tocPages"></div>
+    <div class="area" id="tocArea"><!-- TOC tree or Tool --></div>
+  </div>
+</aside>
+
+<!-- right drawer: search -->
+<aside id="sea" class="drawer right" aria-label="検索">
+  <div class="searchbar"><input id="q" placeholder="空白区切り AND（全ページ）"></div>
+  <div id="chips" class="chips"></div>
+  <div id="res" aria-live="polite"></div>
+</aside>
+
+<button id="fab" class="fab" title="メモを追加">＋</button>
+
+<!-- 変換器が埋める想定の JSON -->
+<script id="convert-words" type="application/json">{"words":["{KPC}","{PC}"]}</script>
+
+<script>
+(()=>{"use strict";
+/* ===== util & state ===== */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+// 共通：正規表現エスケープ
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
+const sc=$("#sc"), pages=$$(".page"), tabs=$$(".tab"), toc=$("#toc"), sea=$("#sea"), btnT=$("#btnToc"), btnS=$("#btnSearch");
+const MOBILE=()=>matchMedia("(max-width:768px)").matches;
+const vp=()=>{const x=visualViewport;return x?{x:x.offsetLeft,y:x.offsetTop,w:x.width,h:x.height}:{x:0,y:0,w:innerWidth,h:innerHeight};};
+const pageOrder=new Map([["info",0],["main",1],["etc",2]]);
+const cmp=(a,b)=> (pageOrder.get(a.page)-pageOrder.get(b.page)) || ((a.order??9e8)-(b.order??9e8));
+const parseHash=h=>{const raw=decodeURIComponent(h.replace(/^#/,""));if(!raw)return{id:"",page:null};const m=raw.match(/^([A-Za-z0-9_-]+):(.*)$/);return m?{page:m[1],id:m[2]}:{page:null,id:raw}};
+const FIXED_KEY=(document.querySelector('meta[name="trpg-key"]')?.content||"").trim();
+if(!/^[A-Za-z0-9_-]+$/.test(FIXED_KEY)) alert("テンプレートの固定キー(meta[name=trpg-key])が不正です。");
+const MEMO_KEY="trpg:"+FIXED_KEY+":memos";
+const REPL_KEY="trpg:"+FIXED_KEY+":replacer";
+let S={page:"info",index:new Map(),tags:new Set()}, ALL=[], ENT=new Map(), ID=new Map(), TAG_SIG="";
+
+/* drawers & buttons */
+const updIcon=()=>{ btnS.textContent=sea.classList.contains("open")?"▶":"◀"; };
+
+function flushToolInputs(){
+  const inputs = document.querySelectorAll('#tocArea .input-box');
+  let changed = false;
+  inputs.forEach(inp=>{
+    const word = inp.getAttribute('placeholder')||"";
+    if (!word) return;
+    const v = inp.value;
+    if ((stateTool.values[word]||"") !== v){
+      stateTool.values[word] = v;
+      changed = true;
+    }
+  });
+  if (changed) stateTool.dirty = true;
+}
+
+const setOpen=(el,on)=>{
+  const willOpen=!!on;
+  el.classList.toggle("open",willOpen);
+  if(el===sea) updIcon();
+  if(willOpen && el===toc) sea.classList.remove("open");
+  if(!willOpen && el===toc){ flushToolInputs(); applyReplacements_ifNeeded(); }
+};
+btnT.onclick=()=>setOpen(toc,!toc.classList.contains("open"));
+btnS.onclick=()=>setOpen(sea,!sea.classList.contains("open")); updIcon();
+tabs.forEach(b=>b.onclick=()=>switchPage(b.dataset.target));
+function switchPage(p){
+  if(S.page===p) return;
+  pages.forEach(sec=>sec.setAttribute("aria-hidden", sec.dataset.page===p?"false":"true"));
+  tabs.forEach(b=>b.setAttribute("aria-current", b.dataset.target===p?"page":"false"));
+  S.page=p; buildTOC_orTool(); buildChips(); if(sea.classList.contains("open")) search();
+}
+
+/* ===== headings, body text and index ===== */
+function heads(sec){
+  const hs=$$("h1,h2,h3",sec).map(h=>({el:h,l:+h.tagName[1],id:h.dataset.id||h.id,text:h.textContent.trim(),
+                                        tags:(h.dataset.tags||"").split(/\s+/).filter(Boolean),children:[],parent:null,page:sec.dataset.page}));
+  const st=[]; hs.forEach(x=>{while(st.length&&st.at(-1).l>=x.l)st.pop(); if(st.length){x.parent=st.at(-1); st.at(-1).children.push(x);} st.push(x);});
+  return hs;
+}
+function collectText(root,{includeCode=false}={}){
+  let out=""; const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+    if(!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+    const p=n.parentElement;
+    if(p&&p.closest(".note")) return NodeFilter.FILTER_REJECT;
+    if(!includeCode && p && p.closest("pre,code,.code")) return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  while(tw.nextNode()) out+=" "+tw.currentNode.nodeValue.trim();
+  return out.replace(/\s+/g," ").trim();
+}
+function bodyText(h){
+  const L=h.tagName, stop=L==="H1"?/^(H1|H2|H3)$/:L==="H2"?/^(H2|H3)$/:/^H3$/;
+  let s="", n=h.nextSibling;
+  while(n){
+    if(n.nodeType===1){ if(stop.test(n.tagName)) break; s+=" "+collectText(n); }
+    else if(n.nodeType===3){ s+=" "+n.nodeValue.trim(); }
+    n=n.nextSibling;
+  }
+  return s.replace(/\s+/g," ").trim();
+}
+function nearestHeading(el){
+  let n=el.nodeType===1?el:el.parentElement; while(n){ if(n.matches?.("h1,h2,h3")) return n; n=n.parentElement; }
+  n=el; while(n){ let p=n; while(p){ if(p.previousElementSibling){ p=p.previousElementSibling; if(p.matches?.("h1,h2,h3")) return p; } else { p=p.parentElement; if(!p) break; if(p.matches?.("h1,h2,h3")) return p; } } n=n.parentElement; }
+  return null;
+}
+function buildIndex(){
+  S.index.clear(); S.tags.clear(); ID.clear();
+  pages.forEach(sec=>{
+    const pg=sec.dataset.page, its=heads(sec), es=[], byId=new Map();
+    its.forEach(it=>{
+      const b = bodyText(it.el);
+      const e={
+        page:pg,id:it.id,lvl:it.l,text:it.text,
+        body:b,
+        scope:(it.text+" "+b).trim(),
+        scopeLower:(it.text+" "+b).trim().toLowerCase(),
+        tags:[...new Set(it.tags)],parent:it.parent?.id||null,
+        children:it.children.map(c=>c.id),el:it.el,order:undefined
+      };
+      it.tags.forEach(t=>S.tags.add(t)); es.push(e); byId.set(e.id,e); if(!ID.has(e.id)) ID.set(e.id,{text:e.text,page:pg,el:it.el});
+    });
+    es.forEach(e=>{let p=e.parent; while(p){const pe=byId.get(p); (pe.descendants??=new Set()).add(e.id); p=pe.parent;}});
+    const elements=sec.querySelectorAll("h1,h2,h3,span.note"); let order=0;
+    elements.forEach(el=>{
+      if(el.matches("h1,h2,h3")){
+        const id=el.dataset.id||el.id;
+        const ent=byId.get(id);
+        if(ent && ent.order===undefined) ent.order=order++;
+      } else { // note
+        const up=nearestHeading(el)||sec.querySelector("h1,h2,h3"); 
+        if(!up) return;
+        const parent=es.find(x=>x.el===up); 
+        if(!parent) return;
+        S.tags.add("メモ");
+        const memoScope = (el.textContent + " " + (el.dataset.note || "")).trim();
+        const memoId=parent.id+"::m::"+Math.random().toString(36).slice(2,8);
+        (parent.descendants??=new Set()).add(memoId);
+        es.push({
+          kind:"memo",
+          page:pg,
+          id:memoId,
+          lvl:3,
+          scope: memoScope.slice(0,400),
+          scopeLower: memoScope.toLowerCase().slice(0,400),
+          text: el.textContent || "（メモ）",
+          body: (el.dataset.note||""),
+          sel: el.textContent,
+          tags:["メモ"],
+          parent: parent.id,
+          children:[],
+          el,
+          descendants:new Set(),
+          order:order++
+        });
+      }
+    });
+    es.forEach(e=>{if(e.order===undefined) e.order=order++;});
+    S.index.set(pg,es);
+  });
+  ALL=[...(S.index.get("info")||[]),...(S.index.get("main")||[]),...(S.index.get("etc")||[])];
+  ENT=new Map(ALL.map(e=>[e.id,e]));
+}
+
+/* ===== TOC or TOOL rendering ===== */
+const stateTool={secOpen:{}, words:[], values:{}, composing:false, dirty:false, valuesInit:false};
+function buildTOC_orTool(){
+  const pcol=$("#tocPages"); pcol.innerHTML="";
+  ["info","main","etc","tool"].forEach(n=>{
+    const b=document.createElement("button"); b.textContent=n;
+    const current=(S.page===n) || (n==="tool" && S.page==="tool");
+    if(current) b.setAttribute("aria-current","page");
+    b.onclick=()=>{ if(n==="tool"){ showToolPanel(); } else { switchPage(n); setOpen(toc,true); } };
+    pcol.appendChild(b);
+  });
+  renderTOC_orToolArea();
+}
+function showToolPanel(){ S.page="tool"; renderTOC_orToolArea(); setOpen(toc,true); buildTOC_orTool(); }
+function renderTOC_orToolArea(){
+  const area=$("#tocArea"); area.innerHTML="";
+  if(S.page==="tool") renderTool(area); else renderTOC(area);
+}
+function renderTOC(area){
+  const sec=pages.find(p=>p.dataset.page===S.page);
+  const its=heads(sec), roots=its.filter(x=>x.l===1), open=new Set();
+  const row=(it,isOpen)=>{
+    const d=document.createElement("div"); d.className="row";
+    const tw=document.createElement("div"); tw.className="tw"; tw.textContent=it.children.length?(isOpen?"▼":"▶"):"•"; if(!it.children.length) tw.classList.add("off");
+    const j=document.createElement("div"); j.textContent=it.text; j.className=it.l===2?"lvl2":it.l===3?"lvl3":"";
+    if(it.children.length) tw.onclick=()=>{open.has(it)?open.delete(it):open.add(it); render();};
+    j.onclick=()=>{ it.el.scrollIntoView({block:"start",behavior:"smooth"}); if(MOBILE()) toc.classList.remove("open"); };
+    d.append(tw,j); return d;
+  };
+  const render=()=>{ area.innerHTML=""; roots.forEach(h1=>{ const o1=open.has(h1); area.appendChild(row(h1,o1));
+    if(o1) h1.children.forEach(h2=>{ const o2=open.has(h2); area.appendChild(row(h2,o2));
+      if(o2) h2.children.forEach(h3=>area.appendChild(row(h3,false))); }); }); };
+  render();
+}
+
+/* ===== Tool Panel (TOC-like) ===== */
+function readConvertWords(){
+  try{
+    const els = document.querySelectorAll('#convert-words');
+    const el  = els[els.length - 1];
+    const obj = JSON.parse(el?.textContent || '{"words":[]}');
+    return Array.isArray(obj.words) ? obj.words.filter(w => w && typeof w === "string") : [];
+  }catch{ return []; }
+}
+function loadReplacerValues(){ try{ const v=JSON.parse(localStorage.getItem(REPL_KEY)||"{}"); return v&&typeof v==="object"?v:{}; }catch{ return {}; } }
+function saveReplacerValues(){ try{ localStorage.setItem(REPL_KEY, JSON.stringify(stateTool.values)); }catch{} }
+function renderTool(area){
+  stateTool.words = readConvertWords();
+  if(!stateTool.valuesInit){ stateTool.values = loadReplacerValues(); stateTool.valuesInit=true; }
+
+  const addRow=(label, onToggle)=>{
+    const d=document.createElement("div"); d.className="row";
+    const tw=document.createElement("div"); tw.className="tw"; tw.textContent=stateTool.secOpen[label]?"▼":"▶";
+    const j=document.createElement("div"); j.textContent=label;
+    tw.onclick=()=>{ stateTool.secOpen[label]=!stateTool.secOpen[label]; onToggle(); };
+    j.onclick=()=>{ stateTool.secOpen[label]=!stateTool.secOpen[label]; onToggle(); };
+    d.append(tw,j); area.appendChild(d);
+  };
+
+  // H1: メモ管理
+  addRow("メモ管理", ()=>renderTOC_orToolArea());
+  if(stateTool.secOpen["メモ管理"]){
+    const btn=document.createElement("button"); btn.className="btn danger"; btn.textContent="全メモ削除";
+    btn.style.margin="6px 8px 12px";
+    btn.onclick=()=>{ if(!confirm("全メモを削除します。よろしいですか？")) return; clearAllNotes(); buildIndex(); buildChips(); search(); alert("削除しました"); };
+    area.appendChild(btn);
+  }
+
+  // H1: 文字変換
+  addRow("文字変換", ()=>renderTOC_orToolArea());
+  if(stateTool.secOpen["文字変換"]){
+    if(!stateTool.words.length){
+      const p=document.createElement("p"); p.style.margin="6px 8px 0"; p.textContent="◆ convert に語を 1行1語で列挙すると、ここに表示されます。";
+      area.appendChild(p);
+    }else{
+      stateTool.words.forEach(word=>{
+        const row=document.createElement("div"); row.className="row";
+        const tw=document.createElement("div"); tw.className="tw"; tw.textContent=stateTool.secOpen[word]?"▼":"▶";
+        const j=document.createElement("div"); j.textContent=word; j.classList.add("lvl2","tool-word");
+        tw.onclick=()=>{ stateTool.secOpen[word]=!stateTool.secOpen[word]; renderTOC_orToolArea(); };
+        j.onclick=()=>{ stateTool.secOpen[word]=!stateTool.secOpen[word]; renderTOC_orToolArea(); };
+        row.append(tw,j); area.appendChild(row);
+
+        if(stateTool.secOpen[word]){
+          const wrap=document.createElement("div"); wrap.style.margin="0 8px 0 48px";
+          const input=document.createElement("input"); input.type="text"; input.className="input-box";
+          input.placeholder = word;
+          input.value = stateTool.values[word] || "";
+
+          input.addEventListener("compositionstart",()=>{stateTool.composing=true;});
+          input.addEventListener("compositionend",()=>{
+            stateTool.composing=false; stateTool.values[word]=input.value; stateTool.dirty=true; applyReplacements_ifNeeded();
+          });
+          input.addEventListener("input",()=>{
+            if(stateTool.composing) return;
+            stateTool.values[word]=input.value; stateTool.dirty=true; applyReplacements_ifNeeded();
+          });
+          input.addEventListener("blur", ()=>{
+            stateTool.values[word]=input.value; stateTool.dirty=true; applyReplacements_ifNeeded();
+          });
+          input.addEventListener("change",()=>{
+            stateTool.values[word]=input.value; stateTool.dirty=true; applyReplacements_ifNeeded();
+          });
+
+          wrap.appendChild(input); area.appendChild(wrap);
+        }
+      });
+    }
+  }
+}
+
+/* ===== Search ===== */
+const q=$("#q"); let composing=false;
+q.addEventListener("compositionstart",()=>composing=true);
+q.addEventListener("compositionend",()=>{composing=false; search();});
+q.addEventListener("input",()=>{ if(!composing) debounce(search,250)(); });
+q.addEventListener("focus", clearHL);
+const words=s=>(s||"").replace(/[　]/g," ").trim().split(/\s+/).filter(Boolean).map(w=>w.toLowerCase());
+const debounce=(f,w=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>f(...a), w); }; };
+
+function tokensForFilter(rawTokens){ return rawTokens.map(t=>t.toLowerCase()); }
+function tokensForHighlight(rawTokens){
+  const values = stateTool.values || loadReplacerValues();
+  const entries = Object.entries(values).filter(([k,v]) => typeof v === "string" && v.length);
+  const mapFwd = new Map(entries.map(([k,v]) => [k.toLowerCase(), v.toLowerCase()]));
+  const mapRev = new Map(entries.map(([k,v]) => [v.toLowerCase(), k.toLowerCase()]));
+  const out = new Set();
+  for(const t of rawTokens){
+    const x = t.toLowerCase();
+    out.add(x);
+    const to = mapFwd.get(x);   if(to) out.add(to);
+    const back = mapRev.get(x); if(back) out.add(back);
+  }
+  return [...out];
+}
+
+function buildChips(){
+  if(!S || !S.index || S.index.size===0){ buildIndex(); }
+  const tags=new Set(S.tags||[]); tags.add("メモ");
+  const list=[...tags].filter(Boolean).sort();
+  const sig=JSON.stringify(list);
+  const wrap=$("#chips"); if(!wrap) return;
+  if(sig===TAG_SIG && wrap.children.length) return;
+  TAG_SIG=sig; wrap.innerHTML="";
+  const allBtn=document.createElement("button");
+  allBtn.className="chip on"; allBtn.textContent="all"; allBtn.dataset.v="all"; allBtn.type="button";
+  wrap.appendChild(allBtn);
+  for(const n of list){
+    const b=document.createElement("button");
+    b.className="chip"; b.textContent=n; b.dataset.v=n; b.type="button";
+    wrap.appendChild(b);
+  }
+  if(!wrap._bound){
+    wrap.addEventListener("click",(ev)=>{
+      const b=ev.target.closest(".chip"); if(!b) return;
+      $$("#chips .chip").forEach(c=>c.classList.toggle("on",c===b));
+      search();
+    });
+    wrap._bound=true;
+  }
+}
+
+function search(){
+  if(!ALL || !ALL.length){ buildIndex(); }
+  const raw = words(q?.value||"");
+  const filterT = tokensForFilter(raw);
+  const hlT     = tokensForHighlight(raw);
+
+  const tag=($("#chips .chip.on")?.dataset?.v)||"all";
+  const cont=$("#res"); if(!cont) return; cont.innerHTML="";
+
+  if(tag==="all" && filterT.length===0){
+    const flat=[...(S.index.get("info")||[]),...(S.index.get("main")||[]),...(S.index.get("etc")||[])];
+    return renderVirtual(flat.filter(e=>e.kind!=="memo"),[],true);
+  }
+
+  const hits=ALL.filter(e=>{
+    const scope=(e.scopeLower||"");
+    const okWords=filterT.every(w=>scope.includes(w));
+    const okTag=(tag==="all")||(e.tags?.includes(tag));
+    return okWords && okTag;
+  });
+
+  const idset=new Set(hits.map(h=>h.id));
+  const filtered=hits.filter(e=>{
+    const d=e.descendants||new Set();
+    for(const c of d){ const ce=ENT.get(c); if(ce && ce.kind!=="memo" && idset.has(c)) return false; }
+    return true;
+  });
+  renderVirtual(filtered,hlT,false);
+}
+
+const BATCH=100;
+function crumb(e){ const es=S.index.get(e.page)||[]; if(e.lvl===1) return e.page;
+  if(e.lvl===2){const p=es.find(x=>x.id===e.parent); return e.page+" ＞ "+(p?.text||"");}
+  const p=es.find(x=>x.id===e.parent), p2=es.find(x=>x.id===p?.parent);
+  return e.page+" ＞ "+(p2?.text||"")+" ＞ "+(p?.text||"");}
+
+/* 見出しは含めず、本文クローンを返す */
+function getHeadingRangeFragment(e){
+  const h = e.el;
+  const L = h.tagName;
+  const stop = L==="H1" ? /^(H1|H2|H3)$/ : L==="H2" ? /^(H2|H3)$/ : /^H3$/;
+  const frag=document.createDocumentFragment();
+  let cur=h.nextSibling;
+  while(cur){
+    if(cur.nodeType===1){
+      if(stop.test(cur.tagName)) break;
+      frag.appendChild(cur.cloneNode(true));
+    }else if(cur.nodeType===3){
+      const span=document.createElement("span"); span.textContent=cur.nodeValue; frag.appendChild(span);
+    }
+    cur=cur.nextSibling;
+  }
+  // インタラクティブ要素の無効化
+  frag.querySelectorAll(".note").forEach(s=>{ s.replaceWith(s.cloneNode(true)); });
+  frag.querySelectorAll("pre.code .copy").forEach(b=>b.remove());
+  return frag;
+}
+
+function firstMarkUnderHeading(h){
+  if(!h) return null;
+  const L = h.tagName;
+  const stop = L==="H1" ? /^(H1|H2|H3)$/ : L==="H2" ? /^(H2|H3)$/ : /^H3$/;
+  let n = h.nextSibling;
+  while(n){
+    if(n.nodeType === 1){
+      if (stop.test(n.tagName)) break;
+      const m = n.querySelector(".hl-tmp");
+      if (m) return m;
+    }
+    n = n.nextSibling;
+  }
+  return null;
+}
+
+function makeCard(e, ws){
+  const card=document.createElement("div"); card.className="card";
+
+  const meta=document.createElement("div"); meta.className="meta";
+  const jb=document.createElement("button"); jb.type="button"; jb.textContent="ジャンプ"; jb.className="btn";
+  jb.onclick=(ev)=>{ev.stopPropagation(); jump(e,ws);};
+  const bc=document.createElement("div"); bc.textContent=crumb(e);
+  meta.append(bc,jb);
+
+  const ttl=document.createElement("div"); ttl.className="title";
+  ttl.textContent = (e.kind==="memo" ? "［メモ］"+(e.sel?e.sel.slice(0,30):"") : e.text);
+
+  const content=document.createElement("div"); content.className="content";
+  const full=document.createElement("div"); full.className="fulltext";
+
+  if(e.kind==="memo"){
+    const safe = (e.body||"")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/\n/g,"<br>");
+    full.innerHTML = safe || "（メモなし）";
+  }else{
+    const frag=getHeadingRangeFragment(e);
+    replaceInNodeTree(frag);
+    full.appendChild(frag);
+  }
+
+  content.appendChild(full);
+  card.append(meta,ttl,content);
+  card.onclick=()=>{ card.classList.toggle("open"); };
+  return card;
+}
+
+function renderVirtual(list,ws,preserve){
+  const cont=$("#res"), arr=preserve?list:list.slice().sort(cmp);
+  if(arr.length===0){ cont.textContent="該当なし"; return; }
+  const sent=document.createElement("div"); sent.style.height="1px"; cont.appendChild(sent);
+  let i=0; (function run(){ const end=Math.min(i+BATCH,arr.length); const df=document.createDocumentFragment(); for(;i<end;i++) df.appendChild(makeCard(arr[i],ws)); cont.insertBefore(df,sent);
+    if(i<arr.length) (typeof requestIdleCallback==="function"?requestIdleCallback:(fn)=>setTimeout(fn,0))(()=>run()); else sent.remove(); })();
+}
+
+/* ===== highlight & links ===== */
+function clearHL(){ $$(".hl-tmp",sc).forEach(m=>m.replaceWith(document.createTextNode(m.textContent))); }
+function highlight(el,ws,includeCode=false){
+  const root=(el.closest("section")||sc);
+  const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+    if(!n.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+    const p=n.parentElement;
+    if(!includeCode && p && p.closest("pre,code,.code")) return NodeFilter.FILTER_REJECT;
+    if(p && p.classList.contains("note")) return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  const re=new RegExp("("+ws.map(reEsc).join("|")+")","ig"), targets=[];
+  while(tw.nextNode()){const n=tw.currentNode; if(re.test(n.nodeValue)) targets.push(n);}
+  targets.forEach(n=>{
+    const parts=n.nodeValue.split(re), f=document.createDocumentFragment();
+    parts.forEach(t=>{ if(!t) return; if(ws.some(w=>t.toLowerCase()===w.toLowerCase())){ const m=document.createElement("mark"); m.className="hl-tmp"; m.textContent=t; f.appendChild(m);} else f.appendChild(document.createTextNode(t));});
+    n.parentNode.replaceChild(f,n);
+  });
+}
+addEventListener("hashchange",()=>{
+  const {id,page}=parseHash(location.hash); if(!id) return; const ent=ID.get(id); if(!ent) return;
+  const targetPage=page||ent.page, act=()=>{ const sec=pages.find(p=>p.dataset.page===targetPage);
+    (sec.querySelector('[data-id="'+CSS.escape(id)+'"],#'+CSS.escape(id))||ent.el).scrollIntoView({block:"start",behavior:"smooth"}); };
+  if(targetPage!==S.page){ switchPage(targetPage); requestAnimationFrame(act);} else act();
+});
+function linkNames(){
+  $$('a[href^="#"]',sc).forEach(a=>{
+    const {id,page}=parseHash(a.getAttribute("href")); const ent=ID.get(id); if(!ent) return;
+    if(!a.textContent.trim()){ a.textContent=ent.text; a.title=ent.text; }
+    a.addEventListener("click",ev=>{ev.preventDefault(); location.hash="#"+((page||ent.page)+":"+id);},{once:true});
+  });
+}
+function jump(e,ws){
+  const go=()=>{
+    e.el.scrollIntoView({block:"start",behavior:"smooth"});
+    applyReplacements_ifNeeded();
+    clearHL();
+    if(ws.length && e.kind!=="memo"){
+      highlight(e.el, ws, true);
+      const target = firstMarkUnderHeading(e.el) || $(".hl-tmp");
+      (target || e.el).scrollIntoView({block:"center",behavior:"smooth"});
+    }
+    if(MOBILE()) sea.classList.remove("open");
+  };
+  if(e.page!==S.page){
+    switchPage(e.page);
+    requestAnimationFrame(()=>{ const sec=pages.find(p=>p.dataset.page===e.page);
+      if(e.kind!=="memo"){ e.el=sec.querySelector('[data-id="'+CSS.escape(e.id)+'"],#'+CSS.escape(e.id))||e.el; }
+      go();
+    });
+  } else go();
+}
+
+/* ===== code copy ===== */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest(".code .copy"); if(!b) return;
+  const code=b.parentElement.querySelector("code").innerText;
+  try{ await navigator.clipboard.writeText(code); b.classList.add("done"); b.textContent="copied ✓";
+       setTimeout(()=>{b.classList.remove("done"); b.textContent="copy";},900); }catch{ alert("copy failed"); }
+});
+
+/* ===== memo (追加/編集/削除) ===== */
+const fab=$("#fab"); let sel=null, pop=null, bd=null;
+const blockOf=n=>(n.nodeType===1?n:n.parentElement)?.closest("h1,h2,h3,p,li,blockquote,pre,dd,td,div");
+function getRange(){
+  const s=getSelection(); if(!s||s.isCollapsed) return null;
+  const r=s.getRangeAt(0).cloneRange(); const b=blockOf(r.startContainer), c=blockOf(r.endContainer);
+  if(!b||!c||b!==c) return null; if(b.closest(".note")||c.closest(".note")) return null;
+  if(!sc.contains(b)||r.toString().trim().length>300) return null; return r;
+}
+function place(el,rect){ const v=vp(),pad=8,ew=el.offsetWidth||40,eh=el.offsetHeight||40;
+  let x=rect.left+rect.width/2+(scrollX||0)-ew/2, y=rect.top+(scrollY||0)-48;
+  el.style.left=Math.min(Math.max(x,v.x+pad),v.x+v.w-ew-pad)+"px";
+  el.style.top=Math.min(Math.max(y,v.y+pad),v.y+v.h-eh-pad)+"px";
+}
+function showFab(){ sel=getRange(); if(!sel){ fab.classList.remove("show"); return; } const r=sel.getBoundingClientRect(); fab.classList.add("show"); place(fab,r); }
+sc.addEventListener("pointerup",()=>setTimeout(showFab,0),{passive:true});
+addEventListener("scroll",()=>fab.classList.remove("show"),{passive:true});
+fab.onclick=()=>{ if(!sel) return; openNote({range:sel}); fab.classList.remove("show"); getSelection().removeAllRanges(); };
+
+function placePop(el,anchorRect,prefer="below"){
+  const pad=8, v=vp(); const ew=el.offsetWidth||320, eh=el.offsetHeight||200;
+  const ax=anchorRect.left+anchorRect.width/2+(scrollX||0), ay=anchorRect.top+(scrollY||0);
+  let x=ax-ew/2, y=(prefer==="below"? ay+anchorRect.height+10 : ay-eh-10);
+  if(prefer==="below" && y+eh>v.y+v.h-pad) y=ay-eh-10; if(prefer==="above" && y<v.y+pad) y=ay+anchorRect.height+10;
+  if(y+eh>v.y+v.h-pad||y<v.y+pad) y=v.y+(v.h-eh)/2; x=Math.min(Math.max(x,v.x+pad),v.x+v.w-ew-pad);
+  el.style.left=x+"px"; el.style.top=y+"px";
+}
+function openNote({range,node}){
+  closePop();
+  bd=document.createElement("div"); bd.className="backdrop"; bd.addEventListener("pointerdown",(ev)=>{ if(ev.target===bd) closePop(); }); document.body.appendChild(bd);
+  pop=document.createElement("div"); pop.className="pop"; pop.setAttribute("role","dialog"); pop.setAttribute("aria-modal","true"); pop.tabIndex=-1;
+  ["pointerdown","pointerup","click"].forEach(ev=>pop.addEventListener(ev,e=>e.stopPropagation()));
+  const head=document.createElement("h4"); head.textContent=node?"メモを編集":"メモを追加";
+  const prev=document.createElement("div"); prev.style.cssText="font-size:12px;color:#666"; prev.textContent="選択："+(node?node.textContent.slice(0,30):range.toString().slice(0,30));
+  const ta=document.createElement("textarea"); if(node) ta.value=node.dataset.note||"";
+  const act=document.createElement("div"); act.className="actions";
+  const sv=document.createElement("button"); sv.type="button"; sv.className="btn primary"; sv.textContent="保存";
+  const cn=document.createElement("button"); cn.type="button"; cn.className="btn"; cn.textContent="やめる";
+  act.append(sv,cn);
+  if(node){ const del=document.createElement("button"); del.type="button"; del.className="btn danger"; del.textContent="削除"; del.style.cssText="position:absolute;inset:10px 10px auto auto";
+    del.addEventListener("click",(ev)=>{ev.stopPropagation(); if(!confirm("このメモを削除しますか？")) return; unwrap(node); closePop(); persistNotes(); buildIndex(); buildChips(); search();});
+    pop.append(del);
+  }
+  pop.append(head,prev,ta,act); document.body.appendChild(pop);
+  const rect=(range?range.getBoundingClientRect():node.getBoundingClientRect());
+  requestAnimationFrame(()=>{ placePop(pop,rect,"below"); pop.focus(); });
+  cn.onclick=()=>closePop();
+  sv.onclick=()=>{
+    if(node){ node.dataset.note=ta.value.trim(); closePop(); persistNotes(); buildIndex(); buildChips(); search(); }
+    else{
+      const span=document.createElement("span"); span.className="note"; span.dataset.note=ta.value.trim();
+      try{ range.surroundContents(span);}catch{ const frag=range.extractContents(); span.appendChild(frag); range.insertNode(span); }
+      span.addEventListener("click",(e)=>{e.stopPropagation(); openNote({node:span});});
+      closePop(); persistNotes(); buildIndex(); buildChips(); search();
+    }
+  };
+}
+function closePop(){ pop?.remove(); pop=null; bd?.remove(); bd=null; }
+function unwrap(span){ const p=span.parentNode; while(span.firstChild) p.insertBefore(span.firstChild,span); p.removeChild(span); }
+function hookNotes(){ $$(".note",sc).forEach(n=>{ if(n._hooked) return; n.addEventListener("click",(e)=>{e.stopPropagation(); openNote({node:n});}); n._hooked=true; }); }
+
+/* ===== memo persist ===== */
+const blockOf2=n=>(n.nodeType===1?n:n.parentElement)?.closest("h1,h2,h3,p,li,blockquote,pre,dd,td,div");
+function textBlocksUnderHeading(hEl){
+  const L=hEl.tagName, arr=[]; let n=hEl;
+  while(n && n!==hEl.parentElement){
+    if(n===hEl){ arr.push(hEl); n=n.nextSibling; continue; }
+    if(!n) break;
+    if(n.nodeType===1){
+      const tn=n.tagName;
+      if((tn==="H1"&&(L==="H1"||L==="H2"||L==="H3"))||(tn==="H2"&&(L==="H2"||L==="H3"))||(tn==="H3"&&L==="H3")) break;
+      if(n.matches("h1,h2,h3")) break;
+      if(n.matches("h1,h2,h3,p,li,blockquote,pre,dd,td,div")) arr.push(n);
+    }
+    n=n.nextSibling;
+  }
+  return arr;
+}
+function globalOffsetInBlock(block,targetSpan){
+  let offset=0; const tw=document.createTreeWalker(block,NodeFilter.SHOW_TEXT,null); let t;
+  while((t=tw.nextNode())){ if(targetSpan.contains(t)) break; offset+=t.nodeValue.length; }
+  if(!t){ const pos=block.textContent.indexOf(targetSpan.textContent); return pos>=0?pos:0; }
+  return offset;
+}
+function surroundRangeByOffsets(block,start,len){
+  const tw=document.createTreeWalker(block,NodeFilter.SHOW_TEXT,null);
+  let acc=0,sn=null,so=0,en=null,eo=0,t;
+  while((t=tw.nextNode())){ const L=t.nodeValue.length;
+    if(sn===null && acc+L>=start){ sn=t; so=start-acc; }
+    if(sn!==null && acc+L>=start+len){ en=t; eo=start+len-acc; break; }
+    acc+=L;
+  }
+  if(!sn) return null; if(!en){ en=sn; eo=so+len; }
+  const r=document.createRange(); r.setStart(sn,so); r.setEnd(en,eo); return r;
+}
+function persistNotes(){
+  hookNotes(); const out=[];
+  pages.forEach(sec=>{
+    const page=sec.dataset.page;
+    $$(".note",sec).forEach(span=>{
+      const h=nearestHeading(span); if(!h) return; const hid=h.dataset.id||h.id; if(!hid) return;
+      const blocks=textBlocksUnderHeading(h); const blk=blocks[blocks.indexOf(blockOf2(span))]; if(!blk) return;
+      const start=globalOffsetInBlock(blk,span); const length=span.textContent.length;
+      out.push({page,hid,bIndex:blocks.indexOf(blk),start,length,body:span.dataset.note||"",sel:span.textContent});
+    });
+  });
+  try{ localStorage.setItem(MEMO_KEY, JSON.stringify(out)); }catch{}
+}
+function restoreNotes(){
+  let memos=[]; try{ memos=JSON.parse(localStorage.getItem(MEMO_KEY)||"[]"); }catch{ return; }
+  memos.forEach(m=>{
+    const sec=pages.find(p=>p.dataset.page===m.page); if(!sec) return;
+    const h=sec.querySelector('[data-id="'+CSS.escape(m.hid)+'"],#'+CSS.escape(m.hid)); if(!h) return;
+    const blocks=textBlocksUnderHeading(h); const blk=blocks[m.bIndex]; if(!blk) return;
+    const r=surroundRangeByOffsets(blk,m.start,m.length); if(!r) return;
+    const span=document.createElement("span"); span.className="note"; span.dataset.note=m.body;
+    try{ r.surroundContents(span);}catch{ const frag=r.extractContents(); span.appendChild(frag); r.insertNode(span); }
+    span.addEventListener("click",(e)=>{e.stopPropagation(); openNote({node:span});});
+  });
+}
+function clearAllNotes(){ pages.forEach(sec=>{ $$(".note",sec).forEach(unwrap); }); try{ localStorage.removeItem(MEMO_KEY);}catch{} }
+
+/* ===== code autobox ===== */
+function autoBoxCodes(){ $$("pre:not(.code)>code",sc).forEach(c=>{const p=c.parentElement;p.classList.add("code");const b=document.createElement("button");b.className="copy";b.textContent="copy";p.insertBefore(b,c);}); }
+
+/* ===== Text Replacement (表示のみ) ===== */
+let snapshot=[];
+function buildSnapshot(){
+  snapshot.length=0;
+  const tw=document.createTreeWalker(sc, NodeFilter.SHOW_TEXT, {
+    acceptNode(n){
+      if(!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      const p = n.parentElement;
+      if(p && (
+         p.closest("pre,code,.code") ||
+         p.closest(".note") ||
+         p.closest("a[href^='#']") ||
+         p.closest("h1,h2,h3")
+      )) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  while(tw.nextNode()){
+    snapshot.push({ node: tw.currentNode, text: tw.currentNode.nodeValue });
+  }
+}
+function replaceInString(s){
+  if(!s) return s;
+  const vals = stateTool.values || loadReplacerValues();
+  const entries = Object.entries(vals)
+    .filter(([k,v]) => typeof k === "string" && k.length > 0 && typeof v === "string" && v.length > 0);
+  if(entries.length === 0) return s;
+  const keys = entries.map(([k]) => k).sort((a,b) => b.length - a.length);
+  const pattern = new RegExp(keys.map(reEsc).join("|"), "g");
+  const table = new Map(entries);
+  return s.replace(pattern, (m) => table.get(m));
+}
+function replaceInNodeTree(root){
+  const tw=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(n){
+      if(!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      const p = n.parentElement;
+      if(p && (
+         p.closest("pre,code,.code") ||
+         p.closest(".note") ||
+         p.closest("a[href^='#']") ||
+         p.closest("h1,h2,h3")
+      )) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  while(tw.nextNode()){
+    tw.currentNode.nodeValue = replaceInString(tw.currentNode.nodeValue);
+  }
+}
+function applyReplacements(){
+  if(!snapshot.length) buildSnapshot();
+  const vals=stateTool.values||loadReplacerValues();
+  const entries=Object.entries(vals).filter(([k,v])=>typeof v==="string" && v.length > 0);
+  if(!entries.length){
+    snapshot.forEach(s=>{ if(s.node.nodeValue!==s.text) s.node.nodeValue=s.text; });
+    return;
+  }
+  snapshot.forEach(s=>{ const next=replaceInString(s.text); if(s.node.nodeValue!==next) s.node.nodeValue=next; });
+}
+function applyReplacements_ifNeeded(){
+  if(stateTool.composing || !stateTool.dirty) return;
+  stateTool.dirty=false; try{ localStorage.setItem(REPL_KEY, JSON.stringify(stateTool.values)); }catch{}
+  (window.requestIdleCallback||((fn)=>setTimeout(fn,0)))(()=>applyReplacements());
+}
+
+/* ===== init ===== */
+autoBoxCodes();
+restoreNotes();
+hookNotes();
+buildIndex(); buildChips(); buildTOC_orTool(); search(); linkNames();
+buildSnapshot();
+})();
+</script>
+
+
+</body></html>
