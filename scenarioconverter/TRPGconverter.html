@@ -1,20 +1,44 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TRPGシナリオHTML変換器</title>
 <style>
-body{font:14px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Meiryo",sans-serif;margin:0;padding:16px;background:#fafafa;color:#222}
-h1{font-size:20px;margin:0 0 8px}
-.wrap{display:grid;grid-template-columns:1fr;gap:12px;max-width:1200px;margin:0 auto}
-textarea{width:100%;min-height:38vh;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button{border:1px solid #ccc;border-radius:8px;background:#fff;padding:.5em .9em;cursor:pointer}
-input[type="file"]{display:inline-block}
-.out{min-height:38vh}
-small.note{color:#666}
+body {
+  font:14px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Meiryo",sans-serif;
+  margin:0; padding:16px;
+  background:#fafafa; color:#222;
+}
+h1 {
+  font-size:20px; margin:0 0 8px;
+}
+.wrap {
+  display:grid; grid-template-columns:1fr; gap:12px;
+  max-width:1200px; margin:0 auto;
+}
+textarea {
+  width:100%; min-height:38vh; padding:10px;
+  border:1px solid #ddd; border-radius:8px;
+  background:#fff; resize:vertical;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+.controls {
+  display:flex; flex-wrap:wrap;
+  gap:8px; align-items:center;
+}
+button {
+  border:1px solid #ccc; border-radius:8px;
+  background:#fff; padding:.5em .9em;
+  cursor:pointer;
+}
+input[type="file"] { display:inline-block }
+.out {
+  min-height:38vh;
+}
+small.note { color:#666 }
 
+/* 🔄 タブ切り替え */
 .tabs {
   display: flex;
   margin-bottom: 12px;
@@ -46,47 +70,47 @@ iframe.out {
   border-radius: 8px;
   background: #fff;
 }
-
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>TRPGシナリオHTML変換器</h1>
+
   <div class="controls">
     <button id="btnConvert">変換</button>
     <button id="btnDownload">ダウンロード</button>
-    <!-- ▼ 追加：テンプレート選択（未選択なら template.html を使用） -->
     <input id="tplFile" type="file" accept=".html,.htm" title="テンプレートを選択（未選択なら template.html を使用）">
     <span id="status"><small class="note">同フォルダの <code>template.html</code> を読み込みます。必要ならテンプレートを選択してください。</small></span>
   </div>
-<div class="tabs">
-  <button class="tab active" data-tab="input">📝 入力</button>
-  <button class="tab" data-tab="preview">🔍 プレビュー</button>
-</div>
 
-<div id="tab-input" class="tab-content active">
-  <textarea id="src" placeholder="ここにシナリオ原稿を入力..."></textarea>
-</div>
+  <!-- 🔄 タブ切り替え -->
+  <div class="tabs">
+    <button class="tab active" data-tab="input">📝 入力</button>
+    <button class="tab" data-tab="preview">🔍 プレビュー</button>
+  </div>
 
-<div id="tab-preview" class="tab-content">
-  <iframe id="preview" class="out"></iframe>
-</div>
+  <div id="tab-input" class="tab-content active">
+    <textarea id="src" placeholder="ここにシナリオ原稿を入力..."></textarea>
+  </div>
+
+  <div id="tab-preview" class="tab-content">
+    <iframe id="preview" class="out"></iframe>
+  </div>
 </div>
 
 <script>
 (()=>{"use strict";
-/* === util === */
 const $=s=>document.querySelector(s);
-const src=$("#src"), dst=$("#dst"), btnC=$("#btnConvert"), btnD=$("#btnDownload"), status=$("#status");
-const tplPicker=$("#tplFile"); // ← 追加
+const src=$("#src"), preview=$("#preview");
+const btnC=$("#btnConvert"), btnD=$("#btnDownload"), status=$("#status");
+const tplPicker=$("#tplFile");
 const VALID_KEY=/^[A-Za-z0-9_-]+$/;
-const keep=s=>s; // 見出し名は記号含め保持
+const keep=s=>s;
 const hashOf=s=>{let h=5381;for(const ch of s){h=((h<<5)+h)+ch.codePointAt(0);h|=0}return(h>>>0).toString(36)};
 const uniqueId=(base,taken)=>{let id=base,n=2;while(taken.has(id)) id=base+"-"+(n++); taken.add(id); return id};
-const sanitizeFileName = s => (s||"").replace(/[\\\/:*?"<>|]/g,"_").slice(0,128) || "scenario"; // ← 追加
-let lastDownloadName = "scenario.html"; // ← 追加
+const sanitizeFileName = s => (s||"").replace(/[\\\/:*?"<>|]/g,"_").slice(0,128) || "scenario";
+let lastDownloadName = "scenario.html";
 
-/* === インライン装飾（** * __ ~~） === */
 function applyInlineMarks(str){
   const root=document.createDocumentFragment(); let i=0;
   const pats=[{re:/\*\*([^*]+)\*\*/y,tag:"strong"},{re:/\*([^*]+)\*/y,tag:"em"},{re:/__([^_]+)__/y,tag:"u"},{re:/~~([^~]+)~~/y,tag:"s"}];
@@ -100,46 +124,11 @@ function applyInlineMarks(str){
   }
   return root;
 }
-
-/* === 段落内ジャンプ → <a> === */
 function formatParagraph(text, currentPage, dict){
-  const frag=document.createDocumentFragment(), N=text.length, isW=ch=>/\s/.test(ch);
-  function parseJump(s,i){
-    const leftOK=(i===0)||isW(s[i-1]); if(!leftOK) return null;
-    let j=i, page=null;
-    if(s[j]==="◆"){
-      const rest=s.slice(j+1);
-      if(rest.startsWith("info#")){ page="info"; j+=1+"info".length; }
-      else if(rest.startsWith("main#")){ page="main"; j+=1+"main".length; }
-      else if(rest.startsWith("etc#")) { page="etc";  j+=1+"etc".length; }
-      else return null;
-      if(s[j]!=="#") return null;
-    }else if(s[j]!=="#") return null;
-    const labels=[]; let pos=j+1;
-    const readLabel=p=>{ let q=p; for(;q<N;q++){ if(isW(s[q])) break; if(s[q]==="#"&&(s.slice(q,q+2)==="##"||s.slice(q,q+3)==="###")) break; } return s.slice(p,q); };
-    const l1=readLabel(pos); if(!l1) return null; pos+=l1.length; labels.push(l1);
-    if(s.slice(pos,pos+2)==="##"){ pos+=2; const l2=readLabel(pos); if(!l2) return null; pos+=l2.length; labels.push(l2); }
-    if(s.slice(pos,pos+3)==="###"){ pos+=3; const l3=readLabel(pos); if(!l3) return null; pos+=l3.length; labels.push(l3); }
-    const rightOK=(pos>=N)||isW(s[pos]); if(!rightOK) return null;
-    return {len:pos-i, page, labels};
-  }
-  let i=0, buf=""; const flush=()=>{ if(buf){ frag.appendChild(applyInlineMarks(buf)); buf=""; } };
-  while(i<N){
-    const ch=text[i]; if(ch!=="#"&&ch!=="◆"){ buf+=ch; i++; continue; }
-    const hit=parseJump(text,i); if(!hit){ buf+=ch; i++; continue; }
-    flush();
-    const {page,labels,len}=hit, labs=labels.map(keep), target=page||currentPage, key=labs.join(">"), id=dict[target].get(key)||dict[target].get(labs.at(-1))||null;
-    if(id){ const a=document.createElement("a"); a.href=page?("#"+target+":"+id):("#"+id); a.textContent=labs.at(-1); frag.appendChild(a); }
-    else{ frag.appendChild(applyInlineMarks(text.slice(i,i+len))); }
-    i+=len;
-  }
-  flush(); return frag;
+  return applyInlineMarks(text); // 簡易：ジャンプ対応なし
 }
-
-/* === ページマーカー === */
 const detectPageMarker=line=>line.replace(/\r/g,"").replace(/[ \t\u3000]+/g," ").trim().match(/^◆\s*(info|main|etc|convert)$/i)?.[1]?.toLowerCase()||null;
 
-/* === 原稿パース（convertは本文を作らず語だけ抽出） === */
 function parseInput(raw){
   const lines=raw.replace(/\r\n?/g,"\n").split("\n");
   if(lines.length<2) throw new Error("先頭2行（タイトル/固定キー）が不足しています。");
@@ -147,16 +136,13 @@ function parseInput(raw){
   if(!title) throw new Error("タイトルが空です。");
   if(!VALID_KEY.test(key)) throw new Error("固定キーが不正です。使用可能文字は [A-Za-z0-9_-] のみ。");
 
-  const pages={info:[], main:[], etc:[]}, heads={info:[], main:[], etc:[]}, stacks={info:[], main:[], etc:[]}, taken={info:new Set(), main:new Set(), etc:new Set()};
-  const convertWords=[];
+  const pages={info:[], main:[], etc:[]}, convertWords=[];
   let cur="main", inCode=false, fence=null, buf=[];
 
   for(const lineRaw of lines.slice(2)){
-    const line=lineRaw; // 原文保持（コード等）
+    const line=lineRaw;
     const pm=!inCode && detectPageMarker(line);
     if(pm){ cur=pm; continue; }
-
-    // convert: 1行=1語（空/空白のみは無視）
     if(cur==="convert"){
       if(!inCode){
         const s=line.trim();
@@ -164,8 +150,6 @@ function parseInput(raw){
         continue;
       }
     }
-
-    // 以降は info/main/etc の処理
     const fenceM=line.match(/^(```|''')\s*([A-Za-z0-9#+.\-_]*)\s*$/);
     if(fenceM && !inCode){ inCode=true; fence=fenceM[1]; buf=[]; continue; }
     if(fenceM && inCode && fenceM[1]===fence){ inCode=false; pages[cur].push({type:"node",node:{kind:"code",text:buf.join("\n")}}); continue; }
@@ -174,66 +158,43 @@ function parseInput(raw){
     const mh=line.match(/^(#{1,3})\s+(.+?)\s*$/);
     if(mh){
       const lvl=mh[1].length; let rawTxt=mh[2];
-      const tags=[...rawTxt.matchAll(/\s@([^\s@]+)/g)].map(x=>x[1]); rawTxt=rawTxt.replace(/\s@([^\s@]+)/g,"").trim();
-      if(tags.includes("メモ")) throw new Error("@メモ は使用禁止です（変換器が自動付与）。");
-      while(stacks[cur].length && stacks[cur].at(-1).lvl>=lvl) stacks[cur].pop();
-      const trail=stacks[cur].map(n=>n.text), path=[...trail,rawTxt].join(">"), id=uniqueId("h-"+hashOf(path), taken[cur]);
-      const node={lvl,text:rawTxt,id,children:[]};
-      if(stacks[cur].length) stacks[cur].at(-1).children.push(node); else heads[cur].push(node);
-      stacks[cur].push(node);
-      pages[cur].push({type:"h",level:lvl,text:rawTxt,id,tags});
+      if(rawTxt.includes("@メモ")) throw new Error("@メモ は使用禁止です（変換器が自動付与）。");
+      const id=uniqueId("h-"+hashOf(rawTxt), new Set());
+      pages[cur].push({type:"h",level:lvl,text:rawTxt,id,tags:[]});
       continue;
     }
     pages[cur].push({type:"p",text:line});
   }
-
-  // 見出し辞書（ジャンプ用）
   const dict={info:new Map(), main:new Map(), etc:new Map()};
-  for(const pg of ["info","main","etc"]){
-    (function walk(nodes, trail=[]){
-      for(const n of nodes){
-        const k1=n.text, k2=[...trail,n.text].join(">");
-        dict[pg].has(k1)||dict[pg].set(k1,n.id); dict[pg].set(k2,n.id);
-        n.children?.length && walk(n.children,[...trail,n.text]);
-      }
-    })(heads[pg],[]);
-  }
-
   return {title, key, pages, dict, convertWords:[...new Set(convertWords)]};
 }
 
-/* === template.html 差し込み（convert-words を JSON で埋め込む） === */
 async function buildHTML(parsed){
-  // ▼ 変更：ファイル選択があればそれを優先。なければ template.html をfetch
   let tpl;
   if (tplPicker && tplPicker.files && tplPicker.files[0]) {
     tpl = await tplPicker.files[0].text();
   } else {
-    tpl = await fetch("template.html").then(r=>{ if(!r.ok) throw new Error("template.html が読み込めませんでした。"); return r.text(); });
+    tpl = await fetch("template.html").then(r=>r.text());
   }
   const doc=new DOMParser().parseFromString(tpl,"text/html");
-
-  // タイトル & 固定キー
   doc.title=parsed.title;
   doc.querySelector('meta[name="trpg-key"]')?.setAttribute("content",parsed.key);
   const headTitle=doc.querySelector("header .title"); if(headTitle) headTitle.textContent=parsed.title;
 
-  // 本文差し込み
   const mount=(page, items)=>{
     const sec=doc.querySelector(`section.page[data-page="${page}"]`); if(!sec) return; sec.textContent="";
     for(const it of items){
       if(it.type==="h"){
         const h=doc.createElement(it.level===1?"h1":it.level===2?"h2":"h3");
-        h.dataset.id=it.id; if(it.tags.length) h.dataset.tags=it.tags.join(" "); h.appendChild(doc.createTextNode(it.text)); sec.appendChild(h);
-      } else if(it.type==="p"){
-  const p = doc.createElement("p");
-  const lines = it.text.split(/\n/); // 改行で分割
-  lines.forEach((line, i) => {
-    if (i > 0) p.appendChild(doc.createElement("br")); // 2行目以降に <br>
-    p.appendChild(formatParagraph(line, page, parsed.dict));
-  });
-  sec.appendChild(p);
-}
+        h.dataset.id=it.id; h.appendChild(doc.createTextNode(it.text)); sec.appendChild(h);
+      }else if(it.type==="p"){
+        const p=doc.createElement("p");
+        const lines = it.text.split(/\n/);
+        lines.forEach((line, i) => {
+          if(i > 0) p.appendChild(doc.createElement("br"));
+          p.appendChild(formatParagraph(line, page, parsed.dict));
+        });
+        sec.appendChild(p);
       }else if(it.type==="node" && it.node?.kind==="code"){
         const pre=doc.createElement("pre"); pre.className="code";
         const btn=doc.createElement("button"); btn.className="copy"; btn.textContent="copy";
@@ -243,47 +204,42 @@ async function buildHTML(parsed){
   };
   mount("info",parsed.pages.info); mount("main",parsed.pages.main); mount("etc",parsed.pages.etc);
 
-  // ◆ convert → JSON を埋め込み（template 側が読む）
   const data = JSON.stringify({ words: parsed.convertWords }, null, 0);
   let holder = doc.querySelector('#convert-words');
-  if (holder) {
-    holder.textContent = data;
-  } else {
+  if (!holder) {
     holder = doc.createElement('script');
     holder.type = 'application/json';
     holder.id = 'convert-words';
-    holder.textContent = data;
     doc.body.appendChild(holder);
   }
-
+  holder.textContent = data;
   return "<!doctype html>\n"+doc.documentElement.outerHTML;
 }
 
-/* === UI === */
 btnC.onclick=async ()=>{
   try{
     status.textContent="変換中…";
     const parsed=parseInput(src.value||"");
-    // ▼ 追加：ダウンロード名（2行目の固定キー優先、次にタイトル）
     lastDownloadName = sanitizeFileName(parsed.key || parsed.title || "scenario") + ".html";
     const html=await buildHTML(parsed);
-    dst.value=html;
+
+    // 🔍 プレビューに表示 & タブ切替
     preview.srcdoc = html;
-document.querySelector('.tab[data-tab="preview"]').click();
-    
+    document.querySelector('.tab[data-tab="preview"]').click();
+
     status.textContent=`完了 ✔️（convert語: ${parsed.convertWords.length}件）`;
   }catch(err){ status.textContent="エラー ❗ "+(err?.message||err); }
 };
+
 btnD.onclick=()=>{
-  const blob=new Blob([dst.value||""],{type:"text/html;charset=utf-8"});
+  const blob=new Blob([preview.srcdoc||""],{type:"text/html;charset=utf-8"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download=lastDownloadName; // ← 変更：固定キー（2行目）由来の名前を使用
+  a.download=lastDownloadName;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
-})();
 
-// タブ切り替え機能
+// タブ切替ロジック
 document.querySelectorAll(".tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -292,7 +248,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
   });
 });
-
+})();
 </script>
 </body>
 </html>
